@@ -86,7 +86,10 @@ test.afterEach(async () => {
 
 test('capture populated screens', async () => {
   test.setTimeout(240_000)
-  app = await launchApp({ env: { ...fx.env, NATIVE_WIN_SIZE: '1366x728' }, seed: defaultSeed() })
+  // The perceptual gate scores against the green reference shots, so visual QA
+  // captures in the classic dark palette. Mono is the shipping default.
+  const seed = { ...(defaultSeed() as Record<string, unknown>), settings: { theme: 'dark' } }
+  app = await launchApp({ env: { ...fx.env, NATIVE_WIN_SIZE: '1366x728' }, seed })
   const { page, dataDir } = app
 
   // Enrich the seeded instance with screenshots + a world before visiting.
@@ -198,7 +201,8 @@ test('capture empty & error states', async () => {
       ...fx.env,
       NATIVE_WIN_SIZE: '1366x728',
       NATIVE_URL_MODRINTH: 'http://127.0.0.1:9' // closed port → search error
-    }
+    },
+    seed: { settings: { theme: 'dark' } }
   })
   const { page } = app
 

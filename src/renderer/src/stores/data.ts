@@ -232,11 +232,12 @@ export async function bootstrapStores(): Promise<void> {
 }
 
 function applyTheme(theme: AppSettings['theme']): void {
+  // `system` follows the OS within the mono (black & white) identity.
   const resolved =
     theme === 'system'
       ? window.matchMedia('(prefers-color-scheme: light)').matches
-        ? 'light'
-        : 'dark'
+        ? 'mono-light'
+        : 'mono'
       : theme
   document.documentElement.dataset.theme = resolved
 }

@@ -66,7 +66,7 @@ export function WorldsTab({ inst }: { inst: InstanceConfig }): React.JSX.Element
               >
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-sm2 bg-surface-inset">
                   {w.icon ? (
-                    <img src={`file://${w.icon}`} alt="" className="h-full w-full object-cover" />
+                    <img src={`file://${w.icon}`} alt="" className="mono-media h-full w-full object-cover" />
                   ) : (
                     <Globe2 size={20} className="text-content-muted" />
                   )}

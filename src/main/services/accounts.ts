@@ -2,18 +2,8 @@ import { EventEmitter } from 'node:events'
 import type Database from 'better-sqlite3'
 import type { AccountInfo, AuthFlowState } from '@shared/types'
 import type { LaunchAccount } from '../core/args'
-import {
-  AuthError,
-  checkEntitlement,
-  fetchProfile,
-  msTokenToMinecraft,
-  offlineUuid,
-  pollDeviceToken,
-  refreshMsToken,
-  requestDeviceCode,
-  validOfflineName,
-  type MsaTokens
-} from './auth'
+import { offlineUuid, validOfflineName } from './auth'
+import type { MsaSession, MsmcClient } from './msmc'
 import { log } from '../logger'
 
 /** Encrypt/decrypt hooks — Electron safeStorage in prod, identity in tests. */
@@ -40,13 +30,19 @@ interface AccountRow {
   tokens_enc: Buffer | null
 }
 
+/** What we persist per MSA account (msmc's saved MCToken + session cache). */
+interface StoredMsa {
+  session: Pick<MsaSession, 'mcToken' | 'xuid' | 'exp'>
+  saved: MsaSession['saved']
+}
+
 export class AccountsService extends EventEmitter {
-  private flowCancelled = false
+  private loginInFlight = false
 
   constructor(
     private db: Database.Database,
     private crypto: TokenCrypto,
-    private clientId: () => string | null
+    private msmc: MsmcClient
   ) {
     super()
   }
@@ -104,69 +100,45 @@ export class AccountsService extends EventEmitter {
   }
 
   cancelMsaFlow(): void {
-    this.flowCancelled = true
+    // The msmc popup window is dismissed by the user; closing it rejects the
+    // login promise. Nothing extra to signal here.
   }
 
   /**
-   * Full device-code sign-in. Emits `flow` AuthFlowState events for the UI.
+   * Interactive Microsoft sign-in through msmc's popup window. No client ID
+   * setup required — msmc uses the official launcher's public OAuth client.
+   * Emits `flow` AuthFlowState events for the UI.
    */
   async beginMsaFlow(): Promise<AccountInfo> {
-    const clientId = this.clientId()
-    if (!clientId) {
-      const err = new AuthError(
-        'No Microsoft client ID configured. Set one in Settings → Accounts (an Azure app registration with public client flows enabled).',
-        'client-id-missing'
-      )
-      this.emit('flow', { step: 'error', error: err.message } satisfies AuthFlowState)
-      throw err
-    }
-    this.flowCancelled = false
+    if (this.loginInFlight) throw new Error('A sign-in window is already open')
+    this.loginInFlight = true
     try {
-      const { info, deviceCode } = await requestDeviceCode(clientId)
-      this.emit('flow', { step: 'device-code', code: info } satisfies AuthFlowState)
-      const token = await pollDeviceToken(
-        clientId,
-        deviceCode,
-        info.expiresIn,
-        info.interval,
-        () => this.flowCancelled
-      )
-      this.emit('flow', { step: 'xbox' } satisfies AuthFlowState)
-      const mc = await msTokenToMinecraft(token.access_token)
-      this.emit('flow', { step: 'minecraft' } satisfies AuthFlowState)
-      await checkEntitlement(mc.mcAccessToken)
-      this.emit('flow', { step: 'profile' } satisfies AuthFlowState)
-      const profile = await fetchProfile(mc.mcAccessToken)
-
-      const tokens: MsaTokens = {
-        msRefreshToken: token.refresh_token,
-        mcAccessToken: mc.mcAccessToken,
-        mcExpiresAt: mc.mcExpiresAt,
-        xuid: mc.xuid
-      }
-      const now = Date.now()
-      this.db
-        .prepare(
-          `INSERT INTO accounts (id, type, username, uuid, active, added_at, tokens_enc)
-           VALUES (?, 'msa', ?, ?, 0, ?, ?)
-           ON CONFLICT(id) DO UPDATE SET username = excluded.username, tokens_enc = excluded.tokens_enc, type = 'msa'`
+      this.emit('flow', { step: 'browser' } satisfies AuthFlowState)
+      const session = await this.msmc.login((state) => {
+        if (state === 'minecraft') this.emit('flow', { step: 'minecraft' } satisfies AuthFlowState)
+        if (state === 'profile') this.emit('flow', { step: 'profile' } satisfies AuthFlowState)
+      })
+      if (session.demo) {
+        throw new Error(
+          'This Microsoft account does not own Minecraft: Java Edition. Native requires game ownership — Xbox Game Pass users must sign in to the official launcher once first.'
         )
-        .run(profile.id, profile.name, profile.id, now, this.crypto.encrypt(JSON.stringify(tokens)))
-      this.setActive(profile.id)
-      const account = this.list().find((a) => a.id === profile.id)!
+      }
+      const account = this.persistSession(session)
       this.emit('flow', { step: 'done', account } satisfies AuthFlowState)
-      log.info(`[auth] signed in as ${profile.name}`)
+      log.info(`[auth] signed in as ${account.username}`)
       return account
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
+      const msg = humanizeMsmcError(err)
       this.emit('flow', { step: 'error', error: msg } satisfies AuthFlowState)
-      throw err
+      throw new Error(msg)
+    } finally {
+      this.loginInFlight = false
     }
   }
 
   /**
    * Launch credentials for the active account. MSA tokens are refreshed
-   * transparently when expired (refresh token → xbox chain → new mc token).
+   * transparently via msmc when expired.
    */
   async launchAccount(): Promise<LaunchAccount> {
     const row = this.db.prepare('SELECT * FROM accounts WHERE active = 1').get() as
@@ -174,50 +146,100 @@ export class AccountsService extends EventEmitter {
       | undefined
     if (!row) throw new Error('No account selected — add one in the Accounts menu')
     if (row.type === 'offline') {
+      return { name: row.username, uuid: row.uuid, accessToken: 'offline', type: 'offline' }
+    }
+    const stored = this.readStored(row)
+    // Fresh enough → use as-is (60s safety margin; msmc exp is epoch ms).
+    if (stored.session.exp > Date.now() + 60_000) {
       return {
         name: row.username,
         uuid: row.uuid,
-        accessToken: 'offline',
-        type: 'offline'
+        accessToken: stored.session.mcToken,
+        type: 'msa',
+        xuid: stored.session.xuid
       }
     }
-    const tokens = await this.freshTokens(row)
-    return {
-      name: row.username,
-      uuid: row.uuid,
-      accessToken: tokens.mcAccessToken,
-      type: 'msa',
-      xuid: tokens.xuid,
-      clientId: this.clientId() ?? undefined
-    }
-  }
-
-  private async freshTokens(row: AccountRow): Promise<MsaTokens> {
-    if (!row.tokens_enc) throw new AuthError('Session data missing — sign in again', 'expired')
-    let tokens: MsaTokens
-    try {
-      tokens = JSON.parse(this.crypto.decrypt(row.tokens_enc)) as MsaTokens
-    } catch {
-      throw new AuthError('Stored session is unreadable — sign in again', 'expired')
-    }
-    if (tokens.mcExpiresAt > Date.now() + 60_000) return tokens
-
-    const clientId = this.clientId()
-    if (!clientId) throw new AuthError('No Microsoft client ID configured', 'client-id-missing')
     log.info(`[auth] refreshing tokens for ${row.username}`)
-    const refreshed = await refreshMsToken(clientId, tokens.msRefreshToken)
-    const mc = await msTokenToMinecraft(refreshed.access_token)
-    const next: MsaTokens = {
-      msRefreshToken: refreshed.refresh_token ?? tokens.msRefreshToken,
-      mcAccessToken: mc.mcAccessToken,
-      mcExpiresAt: mc.mcExpiresAt,
-      xuid: mc.xuid
+    let session: MsaSession
+    try {
+      session = await this.msmc.refresh(stored.saved)
+    } catch (err) {
+      throw new Error(
+        `Session expired — please sign in again (${humanizeMsmcError(err)})`
+      )
     }
-    this.db
-      .prepare('UPDATE accounts SET tokens_enc = ? WHERE id = ?')
-      .run(this.crypto.encrypt(JSON.stringify(next)), row.id)
-    return next
+    this.persistSession(session)
+    return {
+      name: session.profile.name,
+      uuid: session.profile.id,
+      accessToken: session.mcToken,
+      type: 'msa',
+      xuid: session.xuid
+    }
   }
+
+  private persistSession(session: MsaSession): AccountInfo {
+    const stored: StoredMsa = {
+      session: { mcToken: session.mcToken, xuid: session.xuid, exp: session.exp },
+      saved: session.saved
+    }
+    const now = Date.now()
+    this.db
+      .prepare(
+        `INSERT INTO accounts (id, type, username, uuid, active, added_at, tokens_enc)
+         VALUES (?, 'msa', ?, ?, 0, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET username = excluded.username, tokens_enc = excluded.tokens_enc, type = 'msa'`
+      )
+      .run(
+        session.profile.id,
+        session.profile.name,
+        session.profile.id,
+        now,
+        this.crypto.encrypt(JSON.stringify(stored))
+      )
+    if (!this.active()) this.setActive(session.profile.id)
+    else this.setActive(session.profile.id)
+    this.emit('changed', this.list())
+    return this.list().find((a) => a.id === session.profile.id)!
+  }
+
+  private readStored(row: AccountRow): StoredMsa {
+    if (!row.tokens_enc) throw new Error('Session data missing — sign in again')
+    try {
+      return JSON.parse(this.crypto.decrypt(row.tokens_enc)) as StoredMsa
+    } catch {
+      throw new Error('Stored session is unreadable — sign in again')
+    }
+  }
+}
+
+/** msmc rejects with lexicon codes (e.g. "error.gui.closed") or Errors. */
+export function humanizeMsmcError(err: unknown): string {
+  const raw =
+    typeof err === 'string' ? err : err instanceof Error ? err.message : JSON.stringify(err)
+  const map: Record<string, string> = {
+    'error.gui.closed': 'The sign-in window was closed before finishing.',
+    'error.gui.raw.noBrowser': 'No browser was available for sign-in.',
+    'error.auth.microsoft': 'Microsoft sign-in failed — try again.',
+    'error.auth.xboxLive': 'Xbox Live sign-in failed. Does this account have an Xbox profile?',
+    'error.auth.xsts': 'Xbox security check failed.',
+    'error.auth.xsts.userNotFound': 'This Microsoft account has no Xbox profile — create one first.',
+    'error.auth.xsts.child': 'Child accounts must be added to a family by an adult.',
+    'error.auth.xsts.child.SK': 'Child accounts must be added to a family by an adult.',
+    'error.auth.xsts.banned': 'This account is banned from Xbox Live.',
+    'error.auth.minecraft': 'Minecraft services sign-in failed.',
+    'error.auth.minecraft.login': 'Minecraft services sign-in failed.',
+    'error.auth.minecraft.profile':
+      'This account owns the game but has no Minecraft profile — create one in the official launcher first.',
+    'error.auth.minecraft.entitlements':
+      'This Microsoft account does not own Minecraft: Java Edition.'
+  }
+  // Longest code first so specific variants win over their prefixes
+  // (e.g. error.auth.xsts.userNotFound before error.auth.xsts).
+  for (const [code, msg] of Object.entries(map).sort((a, b) => b[0].length - a[0].length)) {
+    if (raw.includes(code)) return msg
+  }
+  return raw
 }
 
 function rowToInfo(r: AccountRow): AccountInfo {

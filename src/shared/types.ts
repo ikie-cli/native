@@ -73,9 +73,8 @@ export interface DeviceCodeInfo {
 
 export type AuthFlowState =
   | { step: 'idle' }
-  | { step: 'device-code'; code: DeviceCodeInfo }
-  | { step: 'polling' }
-  | { step: 'xbox' }
+  /** the Microsoft sign-in window is open */
+  | { step: 'browser' }
   | { step: 'minecraft' }
   | { step: 'profile' }
   | { step: 'done'; account: AccountInfo }
@@ -238,7 +237,7 @@ export interface ProjectVersion {
 }
 
 export interface AppSettings {
-  theme: 'dark' | 'light' | 'oled' | 'system'
+  theme: 'mono' | 'mono-light' | 'dark' | 'light' | 'oled' | 'system'
   language: string
   defaultMemMin: number
   defaultMemMax: number
@@ -254,7 +253,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'dark',
+  theme: 'mono',
   language: 'en',
   defaultMemMin: 512,
   defaultMemMax: 4096,

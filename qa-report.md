@@ -20,6 +20,6 @@ Generated 2026-07-20 · threshold **85%** (empty/error states: 75% — sparse by
 | library | ref-113521.png | 83.8% | 93.1% | 92.8% | **88.8%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | servers-empty | ref-113521.png | 85.2% | 94.8% | 91.6% | **89.8%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | servers | ref-113521.png | 83.2% | 94.3% | 90.5% | **88.6%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
-| settings | ref-113645.png | 89.6% | 93.1% | 95.7% | **92.0%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
+| settings | ref-113645.png | 88.9% | 91.7% | 94.9% | **91.1%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 
 **17/17 screens meet their similarity bar.**

@@ -181,7 +181,15 @@ describe('InstancesService CRUD', () => {
 })
 
 describe('AccountsService (offline + storage)', () => {
-  const svc = (): AccountsService => new AccountsService(db, plainTokenCrypto, () => null)
+  const noMsmc = {
+    login: async (): Promise<never> => {
+      throw new Error('not used')
+    },
+    refresh: async (): Promise<never> => {
+      throw new Error('not used')
+    }
+  }
+  const svc = (): AccountsService => new AccountsService(db, plainTokenCrypto, noMsmc)
 
   it('adds offline accounts with derived uuid and auto-activates the first', () => {
     const s = svc()

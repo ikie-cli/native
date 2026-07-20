@@ -40,7 +40,7 @@ export function InstanceIcon({
     const Icon = builtin.icon
     return (
       <div
-        className={cn('flex shrink-0 items-center justify-center', className)}
+        className={cn('mono-media flex shrink-0 items-center justify-center', className)}
         style={{
           width: size,
           height: size,
@@ -63,7 +63,7 @@ export function InstanceIcon({
     .toUpperCase()
   return (
     <div
-      className={cn('flex shrink-0 select-none items-center justify-center font-bold', className)}
+      className={cn('mono-media flex shrink-0 select-none items-center justify-center font-bold', className)}
       style={{
         width: size,
         height: size,

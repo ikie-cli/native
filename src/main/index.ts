@@ -42,7 +42,7 @@ if (!app.requestSingleInstanceLock()) {
       show: false,
       frame: false,
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : undefined,
-      backgroundColor: '#111317',
+      backgroundColor: '#000000',
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
         contextIsolation: true,
@@ -84,7 +84,7 @@ if (!app.requestSingleInstanceLock()) {
     ensureDirs()
     initLogger()
     seedFromEnv()
-    nativeTheme.themeSource = 'dark'
+    nativeTheme.themeSource = 'dark' // chrome accents; app theme is CSS-variable driven
     log.info(`Native ${app.getVersion()} starting (${process.platform}/${process.arch})`)
     createWindow()
 

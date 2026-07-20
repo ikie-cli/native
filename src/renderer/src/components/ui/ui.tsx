@@ -133,7 +133,7 @@ export function Toggle({
       onClick={() => onChange(!checked)}
       className={cn(
         'relative h-[22px] w-10 shrink-0 rounded-full transition-colors duration-base',
-        checked ? 'bg-accent' : 'bg-[#4a4e56]',
+        checked ? 'bg-accent' : 'bg-surface-active',
         disabled && 'pointer-events-none opacity-40'
       )}
     >

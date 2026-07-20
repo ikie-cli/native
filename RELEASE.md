@@ -6,8 +6,8 @@ build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
 - [x] **Design system extracted and applied consistently** — every surface/typography/radius/
       motion token was pixel-sampled from `./screenshots/` into `design-system.md`, encoded in
       `tailwind.config.ts` + `tokens` CSS variables, and enforced by the perceptual QA gate.
-- [x] **All 9 core features implemented and reachable in UI** — auth (MSA device-code +
-      entitlement gate + refresh + safeStorage, offline profiles, multi-account), version
+- [x] **All 9 core features implemented and reachable in UI** — auth (msmc popup OAuth —
+      zero-setup, entitlement gate, refresh, safeStorage, offline profiles, multi-account), version
       management (manifest, parallel/resumable/sha1-verified downloads with speed & ETA),
       mod loaders (Fabric/Quilt via meta profiles, Forge/NeoForge via headless installer,
       Java 8/17/21 auto-match with Adoptium download), instances (CRUD/duplicate, RAM
@@ -48,5 +48,5 @@ build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
 
 1. `git tag v0.1.0 && git push --tags` — CI packages both platforms and attaches
    `latest.yml` / `latest-linux.yml` feeds to the GitHub Release.
-2. Set `NATIVE_MSA_CLIENT_ID` (or in-app Settings) to a production Azure app registration
-   with *Allow public client flows* enabled before distributing.
+2. Microsoft sign-in works out of the box via msmc (official launcher OAuth client);
+   `NATIVE_MSA_CLIENT_ID` remains available for orgs preferring their own registration.

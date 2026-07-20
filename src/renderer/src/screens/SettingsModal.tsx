@@ -62,10 +62,12 @@ const THEME_CARDS: {
   card: string
   line: string
 }[] = [
-  { id: 'dark', label: 'Dark', bg: '#26282d', card: '#3a3d44', line: '#5b6069' },
-  { id: 'light', label: 'Light', bg: '#f4f6f8', card: '#dfe3e8', line: '#b3bac2' },
-  { id: 'oled', label: 'OLED', bg: '#000000', card: '#1d2025', line: '#3a3d44' },
-  { id: 'system', label: 'Sync with system', bg: '#26282d', card: '#3a3d44', line: '#5b6069' }
+  { id: 'mono', label: 'Mono', bg: '#000000', card: '#1c1c1c', line: '#ffffff' },
+  { id: 'mono-light', label: 'Mono Light', bg: '#ffffff', card: '#e6e6e6', line: '#000000' },
+  { id: 'system', label: 'Sync with system', bg: '#000000', card: '#1c1c1c', line: '#8c8c8c' },
+  { id: 'dark', label: 'Classic Dark', bg: '#26282d', card: '#3a3d44', line: '#1bd96a' },
+  { id: 'oled', label: 'Classic OLED', bg: '#000000', card: '#1d2025', line: '#1bd96a' },
+  { id: 'light', label: 'Classic Light', bg: '#f4f6f8', card: '#dfe3e8', line: '#12b859' }
 ]
 
 function GeneralPane(): React.JSX.Element {
@@ -75,7 +77,7 @@ function GeneralPane(): React.JSX.Element {
       <div className="pb-4">
         <div className="text-body font-semibold text-content-primary">Theme</div>
         <div className="mb-3 mt-0.5 text-small text-content-secondary">
-          Select your preferred color theme for Native.
+          Native ships in Mono — pure black & white. Classic palettes keep the green reference look.
         </div>
         <div className="grid grid-cols-3 gap-3">
           {THEME_CARDS.map((t) => {
@@ -355,8 +357,8 @@ function AboutPane(): React.JSX.Element {
   return (
     <div className="flex flex-col items-center gap-3 py-6 text-center">
       <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
-        <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="#1bd96a" />
-        <path d="M8 16V8.6c0-.5.6-.8 1-.4l6.4 6.9c.4.4 1 .1 1-.4V8" stroke="#03150a" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+        <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="var(--accent)" />
+        <path d="M8 16V8.6c0-.5.6-.8 1-.4l6.4 6.9c.4.4 1 .1 1-.4V8" stroke="var(--accent-contrast)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <div>
         <div className="text-h2 font-extrabold text-content-primary">Native</div>

@@ -149,7 +149,7 @@ function DiscoverStrip(): React.JSX.Element {
               src={n.image!}
               alt={n.title}
               loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-page ease-out-quart group-hover:scale-105"
+              className="mono-media h-full w-full object-cover transition-transform duration-page ease-out-quart group-hover:scale-105"
             />
           </button>
         ))}

@@ -49,7 +49,7 @@ export function PlayerHead({ name, size = 32 }: { name: string; size?: number })
   const px = size / 8
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded-sm2"
+      className="mono-media relative shrink-0 overflow-hidden rounded-sm2"
       style={{ width: size, height: size, background: skin, imageRendering: 'pixelated' }}
       aria-hidden
     >
@@ -99,7 +99,7 @@ function NewsPanel(): React.JSX.Element {
                   src={n.image}
                   alt=""
                   loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-page group-hover:scale-105"
+                  className="mono-media h-full w-full object-cover transition-transform duration-page group-hover:scale-105"
                 />
               </div>
             )}

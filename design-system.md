@@ -194,7 +194,20 @@ All animation on `transform`/`opacity` only (GPU-composited); **never** width/he
 
 ## 8. Theme system
 
-Tokens are CSS custom properties on `:root[data-theme]`. Ships `dark` (reference), `oled`
-(base `#000000`, raised `#111317`, inset `#0a0c0e`), `light` (base `#f4f6f8`, raised `#ffffff`,
-inset `#eceff2`, text inverted, same accent), `system` (follows OS). Settings screen shows the
-four theme preview cards as in ref-113645. Accent green is constant across themes.
+Tokens are CSS custom properties on `:root[data-theme]`; **accent is themed** (`--accent`,
+`--accent-hover`, `--accent-contrast`, `--accent-tint`, `--focus-ring`, `--log-text`,
+`--backdrop`).
+
+**Default identity: `mono` — pure black & white.** Surfaces are neutral blacks
+(window `#000000`, base `#050505`, raised `#121212`, inset `#0a0a0a`, input `#1c1c1c`),
+text is white/gray, and the accent is **white** (`#ffffff` on black): active pills, toggles,
+primary buttons, progress bars, focus rings all render white. `mono-light` is the exact
+inverse (black accent on white). Under both mono themes all content imagery (instance
+tiles, news art, screenshots, favicons, player heads) is desaturated via a GPU
+`grayscale(1)` filter (`.mono-media`) and regains color on hover — color exists only as a
+deliberate reveal.
+
+Classic palettes remain selectable: `dark` (the sampled reference), `oled`, `light` —
+these keep the green `#1bd96a` accent. `system` follows the OS within the mono identity.
+Settings shows six preview cards; visual QA against the reference screenshots pins the
+`dark` theme.

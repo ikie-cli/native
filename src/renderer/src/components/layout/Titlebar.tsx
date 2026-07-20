@@ -50,10 +50,10 @@ export function Titlebar(): React.JSX.Element {
         aria-label="Home"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="#1bd96a" />
+          <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="var(--accent)" />
           <path
             d="M8 16V8.6c0-.5.6-.8 1-.4l6.4 6.9c.4.4 1 .1 1-.4V8"
-            stroke="#03150a"
+            stroke="var(--accent-contrast)"
             strokeWidth="2.1"
             strokeLinecap="round"
             strokeLinejoin="round"

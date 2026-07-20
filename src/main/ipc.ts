@@ -6,6 +6,7 @@ import { openDb } from './db'
 import { paths } from './paths'
 import { SettingsService } from './services/settings'
 import { AccountsService, plainTokenCrypto, type TokenCrypto } from './services/accounts'
+import { createMsmcClient } from './services/msmc'
 import { InstancesService } from './services/instances'
 import { ContentService, type SearchQuery } from './services/content'
 import { ServersService, pingServer } from './services/servers'
@@ -45,7 +46,7 @@ export function buildServices(): Services {
   const accounts = new AccountsService(
     db,
     crypto,
-    () => process.env.NATIVE_MSA_CLIENT_ID ?? settings.get().msaClientId
+    createMsmcClient(() => process.env.NATIVE_MSA_CLIENT_ID ?? settings.get().msaClientId)
   )
   const instances = new InstancesService(db, () => {
     const s = settings.get()

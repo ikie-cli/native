@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Copy, ExternalLink, LogIn, Plus, Trash2, UserPlus, X } from 'lucide-react'
+import { Check, ExternalLink, LogIn, Plus, Trash2, UserPlus, X } from 'lucide-react'
 import { useModals } from '@/stores/nav'
 import { useAccounts, useToasts, toastError } from '@/stores/data'
 import { Modal } from '@/components/ui/modal'
@@ -8,23 +8,26 @@ import { Button, Input, Spinner } from '@/components/ui/ui'
 import { PlayerHead } from '@/components/layout/RightSidebar'
 import { cn } from '@/lib/util'
 
-type Pane = 'list' | 'device' | 'offline'
+type Pane = 'list' | 'msa' | 'offline'
 
 const STEP_LABEL: Record<string, string> = {
-  xbox: 'Signing in to Xbox Live…',
-  minecraft: 'Getting your Minecraft profile…',
-  profile: 'Verifying game ownership…'
+  browser: 'Waiting for the Microsoft sign-in window…',
+  minecraft: 'Signing in to Minecraft services…',
+  profile: 'Fetching your profile…'
 }
 
-function DevicePane({ onDone }: { onDone: () => void }): React.JSX.Element {
+/**
+ * Microsoft sign-in via msmc: a popup window handles the whole OAuth flow
+ * against the official launcher client — no codes to copy, no setup.
+ */
+function MsaPane({ onDone }: { onDone: () => void }): React.JSX.Element {
   const flow = useAccounts((s) => s.flow)
   const setFlow = useAccounts((s) => s.setFlow)
   const push = useToasts((s) => s.push)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    setFlow({ step: 'polling' })
-    window.native.auth.beginMsa().catch(toastError)
+    setFlow({ step: 'browser' })
+    window.native.auth.beginMsa().catch(() => undefined) // errors arrive via flow events
     return () => void window.native.auth.cancelMsa()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -36,49 +39,15 @@ function DevicePane({ onDone }: { onDone: () => void }): React.JSX.Element {
     }
   }, [flow, onDone, push])
 
-  if (flow.step === 'device-code') {
-    const { code } = flow
-    return (
-      <div className="flex flex-col items-center gap-5 py-4 text-center">
-        <div className="text-body text-content-secondary">
-          Go to the Microsoft sign-in page and enter this code:
-        </div>
-        <div className="flex items-center gap-3">
-          <code
-            className="rounded-md2 bg-surface-base px-5 py-3 font-mono text-[28px] font-bold tracking-[0.2em] text-accent"
-            data-testid="device-code"
-          >
-            {code.userCode}
-          </code>
-          <button
-            onClick={() => {
-              void navigator.clipboard.writeText(code.userCode)
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1500)
-            }}
-            className="flex h-11 w-11 items-center justify-center rounded-md2 bg-surface-input text-content-primary transition-colors hover:bg-surface-active"
-            aria-label="Copy code"
-          >
-            {copied ? <Check size={20} className="text-accent" /> : <Copy size={20} />}
-          </button>
-        </div>
-        <Button icon={ExternalLink} onClick={() => void window.native.app.openExternal(code.verificationUri)}>
-          Open Microsoft sign-in
-        </Button>
-        <div className="flex items-center gap-2 text-small text-content-muted">
-          <Spinner size={14} /> Waiting for you to complete sign-in…
-        </div>
-      </div>
-    )
-  }
-
   if (flow.step === 'error') {
     return (
       <div className="flex flex-col items-center gap-4 py-6 text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-danger-tint text-danger">
           <X size={26} />
         </div>
-        <div className="max-w-sm text-body text-content-secondary">{flow.error}</div>
+        <div className="max-w-sm text-body text-content-secondary" data-testid="msa-error">
+          {flow.error}
+        </div>
         <Button onClick={onDone} variant="secondary">
           Back
         </Button>
@@ -87,10 +56,21 @@ function DevicePane({ onDone }: { onDone: () => void }): React.JSX.Element {
   }
 
   return (
-    <div className="flex flex-col items-center gap-3 py-10 text-center">
-      <Spinner size={28} />
-      <div className="text-body text-content-secondary">
-        {STEP_LABEL[flow.step] ?? 'Contacting Microsoft…'}
+    <div className="flex flex-col items-center gap-5 py-10 text-center" data-testid="msa-waiting">
+      <div className="relative">
+        <ExternalLink size={40} strokeWidth={1.5} className="text-content-secondary" />
+        <span className="absolute -right-1.5 -top-1.5">
+          <Spinner size={16} />
+        </span>
+      </div>
+      <div>
+        <div className="text-body font-semibold text-content-primary">
+          {STEP_LABEL[flow.step] ?? 'Contacting Microsoft…'}
+        </div>
+        <p className="mx-auto mt-1.5 max-w-xs text-small text-content-secondary">
+          A Microsoft sign-in window has opened. Finish signing in there — this dialog updates
+          automatically.
+        </p>
       </div>
     </div>
   )
@@ -221,7 +201,7 @@ function AccountList({ setPane }: { setPane: (p: Pane) => void }): React.JSX.Ele
       {/* Option rows in the choose-type pattern of the reference modals. */}
       <div className="flex flex-col gap-2.5">
         <button
-          onClick={() => setPane('device')}
+          onClick={() => setPane('msa')}
           data-testid="add-msa"
           className="flex items-center gap-4 rounded-md2 bg-surface-input p-4 text-left transition-colors duration-fast hover:bg-surface-active"
         >
@@ -266,7 +246,7 @@ export function AccountsModal(): React.JSX.Element {
 
   const titles: Record<Pane, string> = {
     list: 'Accounts',
-    device: 'Sign in with Microsoft',
+    msa: 'Sign in with Microsoft',
     offline: 'Add offline profile'
   }
   const accounts = useAccounts((s) => s.accounts)
@@ -300,7 +280,7 @@ export function AccountsModal(): React.JSX.Element {
           transition={{ duration: 0.16 }}
         >
           {pane === 'list' && <AccountList setPane={setPane} />}
-          {pane === 'device' && <DevicePane onDone={() => setPane('list')} />}
+          {pane === 'msa' && <MsaPane onDone={() => setPane('list')} />}
           {pane === 'offline' && <OfflinePane onDone={() => setPane('list')} />}
         </motion.div>
       </AnimatePresence>

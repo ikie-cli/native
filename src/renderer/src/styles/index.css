@@ -5,8 +5,64 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ---- Design tokens (design-system.md §1, §8) ---- */
+/* ---- Design tokens (design-system.md §1, §8) ----
+ *
+ * Default theme: `mono` — the Native black & white identity. Pure-black
+ * surfaces, grayscale elevation, and a WHITE accent: every place the classic
+ * palette used brand green (active pills, toggles, primary buttons, focus,
+ * progress) renders as white-on-black. `mono-light` is its exact inverse.
+ * The sampled reference palettes remain available as dark / oled / light.
+ */
 :root,
+:root[data-theme='mono'] {
+  --surface-window: #000000;
+  --surface-base: #050505;
+  --surface-raised: #121212;
+  --surface-inset: #0a0a0a;
+  --surface-input: #1c1c1c;
+  --surface-hover: #181818;
+  --surface-active: #262626;
+  --text-primary: #ffffff;
+  --text-secondary: #a3a3a3;
+  --text-muted: #666666;
+  --chip-bg: #1f1f1f;
+  --chip-text: #bfbfbf;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --accent: #ffffff;
+  --accent-hover: #d9d9d9;
+  --accent-contrast: #000000;
+  --accent-tint: rgba(255, 255, 255, 0.08);
+  --focus-ring: rgba(255, 255, 255, 0.55);
+  --log-text: #d4d4d4;
+  --backdrop: rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme='mono-light'] {
+  --surface-window: #ffffff;
+  --surface-base: #fafafa;
+  --surface-raised: #f0f0f0;
+  --surface-inset: #f5f5f5;
+  --surface-input: #e6e6e6;
+  --surface-hover: #ececec;
+  --surface-active: #dcdcdc;
+  --text-primary: #000000;
+  --text-secondary: #595959;
+  --text-muted: #8c8c8c;
+  --chip-bg: #e6e6e6;
+  --chip-text: #404040;
+  --border-subtle: rgba(0, 0, 0, 0.09);
+  --border-strong: rgba(0, 0, 0, 0.2);
+  --accent: #000000;
+  --accent-hover: #2b2b2b;
+  --accent-contrast: #ffffff;
+  --accent-tint: rgba(0, 0, 0, 0.07);
+  --focus-ring: rgba(0, 0, 0, 0.5);
+  --log-text: #333333;
+  --backdrop: rgba(255, 255, 255, 0.5);
+}
+
+/* Classic palettes (sampled from the reference screenshots) */
 :root[data-theme='dark'] {
   --surface-window: #111317;
   --surface-base: #16181c;
@@ -22,6 +78,13 @@
   --chip-text: #b5bac2;
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.14);
+  --accent: #1bd96a;
+  --accent-hover: #12b859;
+  --accent-contrast: #03150a;
+  --accent-tint: rgba(27, 217, 106, 0.1);
+  --focus-ring: rgba(27, 217, 106, 0.6);
+  --log-text: #47d178;
+  --backdrop: rgba(8, 9, 11, 0.42);
 }
 
 :root[data-theme='oled'] {
@@ -32,6 +95,20 @@
   --surface-input: #1d2025;
   --surface-hover: #191c20;
   --surface-active: #24272c;
+  --text-primary: #ffffff;
+  --text-secondary: #9ba1ac;
+  --text-muted: #6e7580;
+  --chip-bg: #383b42;
+  --chip-text: #b5bac2;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --accent: #1bd96a;
+  --accent-hover: #12b859;
+  --accent-contrast: #03150a;
+  --accent-tint: rgba(27, 217, 106, 0.1);
+  --focus-ring: rgba(27, 217, 106, 0.6);
+  --log-text: #47d178;
+  --backdrop: rgba(8, 9, 11, 0.42);
 }
 
 :root[data-theme='light'] {
@@ -49,6 +126,13 @@
   --chip-text: #4d5560;
   --border-subtle: rgba(0, 0, 0, 0.07);
   --border-strong: rgba(0, 0, 0, 0.16);
+  --accent: #12b859;
+  --accent-hover: #0e9a4a;
+  --accent-contrast: #ffffff;
+  --accent-tint: rgba(18, 184, 89, 0.1);
+  --focus-ring: rgba(18, 184, 89, 0.6);
+  --log-text: #0e9a4a;
+  --backdrop: rgba(232, 235, 238, 0.5);
 }
 
 html,
@@ -81,7 +165,7 @@ textarea {
   border-radius: 999px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #4a4e56;
+  background: var(--border-strong);
 }
 *::-webkit-scrollbar-corner {
   background: transparent;
@@ -89,7 +173,7 @@ textarea {
 
 /* Focus rings — accent, keyboard only */
 :focus-visible {
-  outline: 2px solid rgba(27, 217, 106, 0.6);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -105,4 +189,20 @@ textarea {
 .progress-fill {
   transform-origin: left center;
   will-change: transform;
+}
+
+/* ---- Mono identity: the entire canvas is black & white ----
+ * Content imagery (instance tiles, news art, screenshots, server icons)
+ * desaturates under the mono themes; hover restores color as a reveal.
+ * Filters composite on the GPU — no layout or paint storms. */
+:root[data-theme='mono'] .mono-media,
+:root[data-theme='mono-light'] .mono-media {
+  filter: grayscale(1);
+  transition: filter 180ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+:root[data-theme='mono'] .mono-media:hover,
+:root[data-theme='mono'] *:hover > .mono-media,
+:root[data-theme='mono-light'] .mono-media:hover,
+:root[data-theme='mono-light'] *:hover > .mono-media {
+  filter: grayscale(0);
 }

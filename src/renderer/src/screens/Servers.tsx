@@ -52,7 +52,7 @@ function ServerCard({
     >
       <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md2 bg-surface-inset">
         {status?.favicon ? (
-          <img src={status.favicon} alt="" className="h-full w-full object-cover" style={{ imageRendering: 'pixelated' }} />
+          <img src={status.favicon} alt="" className="mono-media h-full w-full object-cover" style={{ imageRendering: 'pixelated' }} />
         ) : (
           <Server size={24} className="text-content-muted" />
         )}

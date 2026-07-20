@@ -2,138 +2,167 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type Database from 'better-sqlite3'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openDbAt } from '../../src/main/db'
-import { AccountsService, plainTokenCrypto } from '../../src/main/services/accounts'
-import type { MsaTokens } from '../../src/main/services/auth'
-import { startFixtureServer, type Fixture } from './helpers/fixture-server'
+import { AccountsService, humanizeMsmcError, plainTokenCrypto } from '../../src/main/services/accounts'
+import type { MsaSession, MsmcClient } from '../../src/main/services/msmc'
 
 let dir: string
 let db: Database.Database
-let fx: Fixture
 
-function jsonRoute(fx: Fixture, path: string, body: unknown): void {
-  fx.add(path, JSON.stringify(body), { contentType: 'application/json' })
+function session(overrides: Partial<MsaSession> = {}): MsaSession {
+  return {
+    profile: { id: 'uuid-1', name: 'Steve' },
+    xuid: '999',
+    mcToken: 'mc-valid',
+    exp: Date.now() + 3600_000,
+    demo: false,
+    saved: { mcToken: 'mc-valid', refresh: 'refresh-A', exp: Date.now() + 3600_000 } as never,
+    ...overrides
+  }
 }
 
-/** Point the whole MSA → XBL → XSTS → MC chain at the fixture server. */
-function wireAuthEndpoints(base: string): void {
-  process.env.NATIVE_URL_MSA_TOKEN = `${base}/msa/token`
-  process.env.NATIVE_URL_XBL = `${base}/xbl`
-  process.env.NATIVE_URL_XSTS = `${base}/xsts`
-  process.env.NATIVE_URL_MC_SERVICES = `${base}/mc`
-}
-
-function seedMsaAccount(db: Database.Database, tokens: MsaTokens): void {
-  db.prepare(
-    `INSERT INTO accounts (id, type, username, uuid, active, added_at, tokens_enc)
-     VALUES ('uuid-1', 'msa', 'Steve', 'uuid-1', 1, ?, ?)`
-  ).run(Date.now(), plainTokenCrypto.encrypt(JSON.stringify(tokens)))
+function client(overrides: Partial<MsmcClient> = {}): MsmcClient {
+  return {
+    login: vi.fn(async () => session()),
+    refresh: vi.fn(async () => session()),
+    ...overrides
+  }
 }
 
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'native-auth-'))
   process.env.NATIVE_DATA_DIR = dir
   db = openDbAt(join(dir, 'test.db'))
-  fx = await startFixtureServer()
-  wireAuthEndpoints(fx.baseUrl)
 })
 
 afterEach(async () => {
   db.close()
-  await fx.close()
   await rm(dir, { recursive: true, force: true })
-  for (const k of ['NATIVE_URL_MSA_TOKEN', 'NATIVE_URL_XBL', 'NATIVE_URL_XSTS', 'NATIVE_URL_MC_SERVICES']) {
-    delete process.env[k]
-  }
+})
+
+describe('MSA sign-in through msmc', () => {
+  it('persists the session and activates the account', async () => {
+    const c = client()
+    const svc = new AccountsService(db, plainTokenCrypto, c)
+    const states: string[] = []
+    svc.on('flow', (f: { step: string }) => states.push(f.step))
+
+    const account = await svc.beginMsaFlow()
+    expect(account.username).toBe('Steve')
+    expect(account.type).toBe('msa')
+    expect(account.active).toBe(true)
+    expect(states).toEqual(['browser', 'done'])
+    expect(c.login).toHaveBeenCalledOnce()
+
+    // tokens are stored encrypted
+    const row = db.prepare('SELECT tokens_enc FROM accounts WHERE id = ?').get('uuid-1') as {
+      tokens_enc: Buffer
+    }
+    const stored = JSON.parse(plainTokenCrypto.decrypt(row.tokens_enc))
+    expect(stored.session.mcToken).toBe('mc-valid')
+    expect(stored.saved.refresh).toBe('refresh-A')
+  })
+
+  it('rejects demo accounts (no game ownership)', async () => {
+    const svc = new AccountsService(
+      db,
+      plainTokenCrypto,
+      client({ login: vi.fn(async () => session({ demo: true })) })
+    )
+    await expect(svc.beginMsaFlow()).rejects.toThrow(/does not own Minecraft/)
+    expect(svc.list()).toHaveLength(0)
+  })
+
+  it('emits a human error when the sign-in window is closed', async () => {
+    const svc = new AccountsService(
+      db,
+      plainTokenCrypto,
+      client({ login: vi.fn(async () => Promise.reject('error.gui.closed')) })
+    )
+    let flowError = ''
+    svc.on('flow', (f: { step: string; error?: string }) => {
+      if (f.step === 'error') flowError = f.error!
+    })
+    await expect(svc.beginMsaFlow()).rejects.toThrow(/window was closed/)
+    expect(flowError).toMatch(/window was closed/)
+  })
 })
 
 describe('MSA token refresh', () => {
   it('uses stored tokens untouched while still valid', async () => {
-    const svc = new AccountsService(db, plainTokenCrypto, () => 'client-123')
-    seedMsaAccount(db, {
-      msRefreshToken: 'refresh-A',
-      mcAccessToken: 'mc-valid',
-      mcExpiresAt: Date.now() + 3600_000,
-      xuid: '999'
-    })
+    const c = client()
+    const svc = new AccountsService(db, plainTokenCrypto, c)
+    await svc.beginMsaFlow()
+
     const la = await svc.launchAccount()
     expect(la.accessToken).toBe('mc-valid')
     expect(la.xuid).toBe('999')
-    expect(fx.requests).toHaveLength(0) // zero network traffic
+    expect(la.type).toBe('msa')
+    expect(c.refresh).not.toHaveBeenCalled()
   })
 
-  it('refreshes expired tokens through the full chain and persists the result', async () => {
-    const svc = new AccountsService(db, plainTokenCrypto, () => 'client-123')
-    seedMsaAccount(db, {
-      msRefreshToken: 'refresh-A',
-      mcAccessToken: 'mc-stale',
-      mcExpiresAt: Date.now() - 1000,
-      xuid: '999'
+  it('refreshes expired tokens through msmc and persists the result', async () => {
+    const c = client({
+      login: vi.fn(async () => session({ mcToken: 'mc-stale', exp: Date.now() - 1000 })),
+      refresh: vi.fn(async () =>
+        session({
+          mcToken: 'mc-fresh',
+          exp: Date.now() + 86_400_000,
+          saved: { refresh: 'refresh-B' } as never
+        })
+      )
     })
-    jsonRoute(fx, '/msa/token', {
-      token_type: 'Bearer',
-      access_token: 'ms-fresh',
-      refresh_token: 'refresh-B',
-      expires_in: 3600
-    })
-    jsonRoute(fx, '/xbl', { Token: 'xbl-tok', DisplayClaims: { xui: [{ uhs: 'hash1' }] } })
-    jsonRoute(fx, '/xsts', {
-      Token: 'xsts-tok',
-      DisplayClaims: { xui: [{ uhs: 'hash1', xid: '424242' }] }
-    })
-    jsonRoute(fx, '/mc/authentication/login_with_xbox', {
-      access_token: 'mc-fresh',
-      expires_in: 86400
-    })
+    const svc = new AccountsService(db, plainTokenCrypto, c)
+    await svc.beginMsaFlow()
 
     const la = await svc.launchAccount()
     expect(la.accessToken).toBe('mc-fresh')
-    expect(la.xuid).toBe('424242')
-    expect(fx.requests.map((r) => r.path)).toEqual([
-      '/msa/token',
-      '/xbl',
-      '/xsts',
-      '/mc/authentication/login_with_xbox'
-    ])
+    expect(c.refresh).toHaveBeenCalledOnce()
 
-    // Persisted: a second call needs no network.
-    fx.requests.length = 0
-    const again = await svc.launchAccount()
-    expect(again.accessToken).toBe('mc-fresh')
-    expect(fx.requests).toHaveLength(0)
+    // Persisted: a second call needs no further refresh.
+    await svc.launchAccount()
+    expect(c.refresh).toHaveBeenCalledOnce()
 
-    // The rotated MS refresh token was saved.
     const row = db.prepare('SELECT tokens_enc FROM accounts WHERE id = ?').get('uuid-1') as {
       tokens_enc: Buffer
     }
-    const saved = JSON.parse(plainTokenCrypto.decrypt(row.tokens_enc)) as MsaTokens
-    expect(saved.msRefreshToken).toBe('refresh-B')
+    const stored = JSON.parse(plainTokenCrypto.decrypt(row.tokens_enc))
+    expect(stored.saved.refresh).toBe('refresh-B')
   })
 
-  it('surfaces an expired session when the refresh token is rejected', async () => {
-    const svc = new AccountsService(db, plainTokenCrypto, () => 'client-123')
-    seedMsaAccount(db, {
-      msRefreshToken: 'revoked',
-      mcAccessToken: 'mc-stale',
-      mcExpiresAt: 0,
-      xuid: ''
+  it('surfaces an expired session when the refresh is rejected', async () => {
+    const c = client({
+      login: vi.fn(async () => session({ exp: 0 })),
+      refresh: vi.fn(async () => Promise.reject('error.auth.microsoft'))
     })
-    jsonRoute(fx, '/msa/token', {
-      error: 'invalid_grant',
-      error_description: 'AADSTS70000: refresh token revoked'
-    })
-    await expect(svc.launchAccount()).rejects.toThrow(/refresh token revoked|sign in again/i)
+    const svc = new AccountsService(db, plainTokenCrypto, c)
+    await svc.beginMsaFlow()
+    await expect(svc.launchAccount()).rejects.toThrow(/sign in again/i)
   })
 
-  it('fails cleanly when no client id is configured', async () => {
-    const svc = new AccountsService(db, plainTokenCrypto, () => null)
-    seedMsaAccount(db, {
-      msRefreshToken: 'refresh-A',
-      mcAccessToken: 'stale',
-      mcExpiresAt: 0,
-      xuid: ''
-    })
-    await expect(svc.launchAccount()).rejects.toThrow(/client ID/i)
+  it('offline accounts never touch the network', async () => {
+    const c = client()
+    const svc = new AccountsService(db, plainTokenCrypto, c)
+    svc.addOffline('Herobrine')
+    const la = await svc.launchAccount()
+    expect(la.type).toBe('offline')
+    expect(la.accessToken).toBe('offline')
+    expect(c.login).not.toHaveBeenCalled()
+    expect(c.refresh).not.toHaveBeenCalled()
+  })
+})
+
+describe('humanizeMsmcError', () => {
+  it('maps msmc lexicon codes to sentences', () => {
+    expect(humanizeMsmcError('error.gui.closed')).toMatch(/window was closed/)
+    expect(humanizeMsmcError('error.auth.xsts.userNotFound')).toMatch(/no Xbox profile/)
+    expect(humanizeMsmcError(new Error('error.auth.minecraft.profile'))).toMatch(
+      /no Minecraft profile/
+    )
+  })
+
+  it('passes through unknown messages', () => {
+    expect(humanizeMsmcError(new Error('something odd'))).toBe('something odd')
   })
 })

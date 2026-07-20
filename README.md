@@ -7,9 +7,11 @@ designed against a pixel-sampled dark design system (see [`design-system.md`](de
 
 ## Features
 
-- **Microsoft sign-in** — OAuth device-code flow with Xbox/XSTS chain, game-ownership
-  (entitlement) verification, transparent token refresh, and OS-keychain token encryption
-  (`safeStorage`). Offline profiles for singleplayer/LAN. Multi-account switching.
+- **Microsoft sign-in** — powered by [msmc](https://github.com/Hanro50/MSMC): a popup
+  OAuth window against the official launcher client, so it **works out of the box with no
+  Azure/app-registration setup**. Game-ownership verification, transparent token refresh,
+  OS-keychain token encryption (`safeStorage`). Offline profiles for singleplayer/LAN.
+  Multi-account switching.
 - **Instances** — create, rename, duplicate, delete; per-instance RAM sliders, JVM args,
   resolution, icon; playtime tracking.
 - **Mod loaders** — one-click Fabric, Quilt, Forge, and NeoForge installs with automatic
@@ -38,6 +40,10 @@ Grab the latest from **Releases**:
 | Linux | `Native-<version>-<arch>.AppImage` (auto-updates) or `.deb` |
 | macOS | **Planned — next phase.** The codebase is kept cross-platform-safe (rule-based OS handling, no platform hacks), so macOS ships without a rewrite. |
 
+Native ships in **Mono** — a pure black & white identity (white accent on black, imagery
+desaturated until hover). Classic green palettes from the reference design remain available
+in Settings → Theme.
+
 ## Development
 
 ```bash
@@ -62,11 +68,12 @@ Fabric, Modrinth, MSA, and news endpoints (all base URLs are `NATIVE_URL_*` env-
 and the "game" is a tiny compiled Java `FakeClient` that records its argv, so the entire
 create → install → launch → crash pipeline is exercised without touching the internet.
 
-### Auth setup
+### Auth
 
-Microsoft sign-in needs an Azure app registration client ID (public client flows enabled).
-Provide it via Settings or the `NATIVE_MSA_CLIENT_ID` env var. Native enforces game
-ownership at sign-in; playing online requires owning Minecraft: Java Edition.
+Microsoft sign-in needs **no setup** — msmc drives the official Minecraft launcher OAuth
+client through a popup window. A custom Azure client ID can optionally be supplied via
+`NATIVE_MSA_CLIENT_ID` or Settings for orgs that want their own registration. Native
+enforces game ownership at sign-in; playing online requires owning Minecraft: Java Edition.
 
 ### Packaging
 

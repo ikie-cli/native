@@ -57,7 +57,7 @@ export async function launchApp(opts: LaunchOpts = {}): Promise<LaunchedApp> {
 /** Standard populated seed used by most specs. */
 export function defaultSeed(): unknown {
   return {
-    settings: { theme: 'dark' },
+    settings: { theme: 'mono' },
     accounts: [
       { id: 'off-1', type: 'offline', username: 'TestPlayer', uuid: 'e5af59f4-0000-3000-8000-000000000001', active: true }
     ],

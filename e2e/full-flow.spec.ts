@@ -184,5 +184,5 @@ test('settings modal opens; theme switch flips tokens', async () => {
   await expect(page.getByText('Theme', { exact: true })).toBeVisible()
 
   const before = await page.evaluate(() => document.documentElement.dataset.theme)
-  expect(before).toBe('dark')
+  expect(before).toBe('mono')
 })

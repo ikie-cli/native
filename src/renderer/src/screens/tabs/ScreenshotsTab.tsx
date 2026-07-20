@@ -42,7 +42,7 @@ function Thumb({
           <img
             src={src}
             alt={shot.name}
-            className="h-full w-full object-cover transition-transform duration-page group-hover:scale-105"
+            className="mono-media h-full w-full object-cover transition-transform duration-page group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">

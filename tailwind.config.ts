@@ -21,10 +21,10 @@ export default {
           active: 'var(--surface-active)'
         },
         accent: {
-          DEFAULT: '#1bd96a',
-          hover: '#12b859',
-          contrast: '#03150a',
-          tint: 'rgba(27,217,106,0.10)'
+          DEFAULT: 'var(--accent)',
+          hover: 'var(--accent-hover)',
+          contrast: 'var(--accent-contrast)',
+          tint: 'var(--accent-tint)'
         },
         danger: {
           DEFAULT: '#ff496e',
@@ -46,7 +46,7 @@ export default {
           subtle: 'var(--border-subtle)',
           strong: 'var(--border-strong)'
         },
-        log: '#47d178'
+        log: 'var(--log-text)'
       },
       fontFamily: {
         sans: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
