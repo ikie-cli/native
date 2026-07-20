@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Cpu, HardDriveDownload, RotateCcw, Save, Trash2 } from 'lucide-react'
+import { Cpu, HardDriveDownload, ImagePlus, RotateCcw, Save, Trash2 } from 'lucide-react'
 import type { InstanceConfig, SystemMemory } from '@shared/types'
 import { useInstances, useSettings, useToasts, toastError } from '@/stores/data'
 import { useNav } from '@/stores/nav'
 import { Button, Input } from '@/components/ui/ui'
+import { InstanceIcon } from '@/components/InstanceIcon'
 import { Slider } from '@/components/ui/slider'
 import { FieldLabel } from '@/components/ui/modal'
 
@@ -67,9 +68,29 @@ export function OptionsTab({ inst }: { inst: InstanceConfig }): React.JSX.Elemen
     <div className="h-full overflow-y-auto px-6 pb-24">
       <div className="mx-auto flex max-w-3xl flex-col gap-4 pt-1">
         <Section title="General">
-          <div>
-            <FieldLabel>Instance name</FieldLabel>
-            <Input value={name} onChange={(e) => setName(e.target.value)} data-testid="options-name" />
+          <div className="flex items-end gap-4">
+            <InstanceIcon icon={inst.icon} name={inst.name} size={56} />
+            <div className="flex-1">
+              <FieldLabel>Instance name</FieldLabel>
+              <Input value={name} onChange={(e) => setName(e.target.value)} data-testid="options-name" />
+            </div>
+            <Button
+              variant="secondary"
+              icon={ImagePlus}
+              onClick={() => {
+                window.native.icons
+                  .importImage()
+                  .then(async (ref) => {
+                    if (!ref) return
+                    await window.native.instances.update(inst.id, { icon: ref })
+                    await refresh()
+                    push({ kind: 'success', title: 'Instance image updated' })
+                  })
+                  .catch(toastError)
+              }}
+            >
+              Change image
+            </Button>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

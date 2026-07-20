@@ -56,11 +56,11 @@ function gameplayPng(w: number, h: number, seed: number): Buffer {
       const i = (y * w + x) * 4
       const base = y / h < horizon ? sky : ground
       // cheap dithered texture so it reads as terrain, not flat fill;
-      // 0.55 exposure keeps thumbnails in the muted range of real captures
+      // 0.45 exposure keeps thumbnails in the muted range of real captures
       const n = ((x * 7 + y * 13 + seed * 31) % 17) - 8
-      png.data[i] = Math.max(0, Math.min(255, base[0] * 0.55 + n))
-      png.data[i + 1] = Math.max(0, Math.min(255, base[1] * 0.55 + n))
-      png.data[i + 2] = Math.max(0, Math.min(255, base[2] * 0.55 + n))
+      png.data[i] = Math.max(0, Math.min(255, base[0] * 0.45 + n))
+      png.data[i + 1] = Math.max(0, Math.min(255, base[1] * 0.45 + n))
+      png.data[i + 2] = Math.max(0, Math.min(255, base[2] * 0.45 + n))
       png.data[i + 3] = 255
     }
   }
@@ -95,7 +95,7 @@ test('capture populated screens', async () => {
   // Enrich the seeded instance with screenshots + a world before visiting.
   const gameDir = join(dataDir, 'instances', 'seed-fabric', 'minecraft')
   mkdirSync(join(gameDir, 'screenshots'), { recursive: true })
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 6; i++) {
     writeFileSync(join(gameDir, 'screenshots', `2026-07-${String(i + 1).padStart(2, '0')}_12.30.0${i % 10}.png`), gameplayPng(320, 180, i))
   }
   const worldDir = join(gameDir, 'saves', 'New World')
@@ -138,6 +138,8 @@ test('capture populated screens', async () => {
 
   // Screenshots gallery
   await page.getByRole('tab', { name: 'Screenshots' }).click()
+  // clear lingering toasts so they don't sit over the sidebar in captures
+  for (const t of await page.getByLabel('Dismiss').all()) await t.click().catch(() => undefined)
   await page.waitForTimeout(800) // thumbnails load over IPC
   await shoot(page, 'instance-screenshots')
 

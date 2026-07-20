@@ -156,6 +156,11 @@ const api = {
   news: {
     fetch: (): Promise<NewsItem[]> => ipcRenderer.invoke(IPC.news.fetch)
   },
+  icons: {
+    /** Open a picker, import the chosen image, return `image:<name>` or null. */
+    importImage: (): Promise<string | null> => ipcRenderer.invoke(IPC.icons.importImage),
+    data: (ref: string): Promise<string | null> => ipcRenderer.invoke(IPC.icons.data, ref)
+  },
   java: {
     list: (): Promise<JavaInstall[]> => ipcRenderer.invoke(IPC.java.list),
     test: (path: string): Promise<JavaInstall | null> => ipcRenderer.invoke(IPC.java.test, path),

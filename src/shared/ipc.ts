@@ -83,6 +83,10 @@ export const IPC = {
   news: {
     fetch: 'news:fetch'
   },
+  icons: {
+    importImage: 'icons:import-image',
+    data: 'icons:data'
+  },
   java: {
     list: 'java:list',
     detect: 'java:detect',

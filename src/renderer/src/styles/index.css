@@ -191,10 +191,11 @@ textarea {
   will-change: transform;
 }
 
-/* ---- Mono identity: the entire canvas is black & white ----
- * Content imagery (instance tiles, news art, screenshots, server icons)
- * desaturates under the mono themes; hover restores color as a reveal.
- * Filters composite on the GPU — no layout or paint storms. */
+/* ---- Mono identity ----
+ * Only decorative/marketing imagery (news art) desaturates under the mono
+ * themes, regaining color on hover. Functional identity imagery — mod icons,
+ * instance tiles, player heads, screenshots, favicons — keeps its color so
+ * things stay recognizable. Filters composite on the GPU. */
 :root[data-theme='mono'] .mono-media,
 :root[data-theme='mono-light'] .mono-media {
   filter: grayscale(1);

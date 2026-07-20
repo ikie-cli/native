@@ -1,5 +1,5 @@
 {
-  "comment": "qa-screenshots/<name>.png → closest reference in screenshots/. Weights: which aspects that reference is meant to validate.",
+  "comment": "qa-screenshots/<name>.png \u2192 closest reference in screenshots/. Gallery maps to the tile-grid reference (ref-113521) \u2014 same raised-card grid structure; ref-113501's full-height skin viewer has no analogue in our layout.",
   "mappings": {
     "home": "ref-113405.png",
     "home-empty": "ref-113405.png",
@@ -9,7 +9,7 @@
     "discover-error": "ref-113424.png",
     "instance-content": "ref-113533.png",
     "instance-worlds": "ref-113533.png",
-    "instance-screenshots": "ref-113533.png",
+    "instance-screenshots": "ref-113521.png",
     "instance-logs": "ref-113614.png",
     "instance-options": "ref-113533.png",
     "launch-console": "ref-113614.png",

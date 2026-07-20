@@ -5,6 +5,7 @@ import { useMemo } from 'react'
 import { useNav, useModals, type Route } from '@/stores/nav'
 import { useAccounts, useInstances, useRunning } from '@/stores/data'
 import { InstanceIcon } from '@/components/InstanceIcon'
+import { Tooltip } from '@/components/ui/tooltip'
 import { cn } from '@/lib/util'
 
 function RailButton({
@@ -19,23 +20,24 @@ function RailButton({
   onClick: () => void
 }): React.JSX.Element {
   return (
-    <motion.button
-      whileHover={{ scale: 1.08 }}
-      whileTap={{ scale: 0.92 }}
-      transition={{ duration: 0.12 }}
-      aria-label={label}
-      title={label}
-      aria-current={active ? 'page' : undefined}
-      onClick={onClick}
-      className={cn(
-        'flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-fast',
-        active
-          ? 'bg-accent text-accent-contrast'
-          : 'text-content-secondary hover:bg-surface-hover hover:text-content-primary'
-      )}
-    >
-      <Icon size={22} strokeWidth={2} />
-    </motion.button>
+    <Tooltip label={label} side="right">
+      <motion.button
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
+        transition={{ duration: 0.12 }}
+        aria-label={label}
+        aria-current={active ? 'page' : undefined}
+        onClick={onClick}
+        className={cn(
+          'flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-fast',
+          active
+            ? 'bg-accent text-accent-contrast'
+            : 'text-content-secondary hover:bg-surface-hover hover:text-content-primary'
+        )}
+      >
+        <Icon size={22} strokeWidth={2} />
+      </motion.button>
+    </Tooltip>
   )
 }
 
@@ -70,24 +72,28 @@ export function Rail(): React.JSX.Element {
           const isRunning = running.some((r) => r.instanceId === inst.id)
           const activeInst = route.name === 'instance' && route.id === inst.id
           return (
-            <motion.button
+            <Tooltip
               key={inst.id}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.92 }}
-              transition={{ duration: 0.12 }}
-              title={inst.name}
-              aria-label={inst.name}
-              onClick={() => go({ name: 'instance', id: inst.id, tab: 'content' })}
-              className={cn(
-                'relative rounded-sm2',
-                (activeInst || isRunning) && 'ring-2 ring-accent ring-offset-2 ring-offset-surface-raised'
-              )}
+              label={isRunning ? `${inst.name} — running` : inst.name}
+              side="right"
             >
-              <InstanceIcon icon={inst.icon} name={inst.name} size={32} />
-              {isRunning && (
-                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-raised bg-accent" />
-              )}
-            </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.92 }}
+                transition={{ duration: 0.12 }}
+                aria-label={inst.name}
+                onClick={() => go({ name: 'instance', id: inst.id, tab: 'content' })}
+                className={cn(
+                  'relative rounded-sm2',
+                  (activeInst || isRunning) && 'ring-2 ring-accent ring-offset-2 ring-offset-surface-raised'
+                )}
+              >
+                <InstanceIcon icon={inst.icon} name={inst.name} size={32} />
+                {isRunning && (
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-raised bg-accent" />
+                )}
+              </motion.button>
+            </Tooltip>
           )
         })}
         <RailButton icon={Plus} label="Create instance" onClick={() => setCreateOpen(true)} />
@@ -96,7 +102,7 @@ export function Rail(): React.JSX.Element {
       <RailButton icon={Settings} label="Settings" onClick={() => setSettingsOpen(true)} />
       <RailButton
         icon={active ? User : LogIn}
-        label={active ? `Accounts (${active.username})` : 'Sign in'}
+        label={active ? `Accounts — ${active.username}` : 'Sign in'}
         onClick={() => setAccountsOpen(true)}
       />
     </aside>

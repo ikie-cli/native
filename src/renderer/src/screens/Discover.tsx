@@ -109,7 +109,7 @@ function HitCard({ hit, instance }: { hit: SearchHit; instance: InstanceConfig |
     >
       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md2 bg-surface-inset">
         {hit.icon ? (
-          <img src={hit.icon} alt="" loading="lazy" className="mono-media h-full w-full object-cover" />
+          <img src={hit.icon} alt="" loading="lazy" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-content-muted">
             <Package size={26} />

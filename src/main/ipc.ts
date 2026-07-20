@@ -12,6 +12,7 @@ import { ContentService, type SearchQuery } from './services/content'
 import { ServersService, pingServer } from './services/servers'
 import { WorldsService } from './services/worlds'
 import { ScreenshotsService } from './services/screenshots'
+import { IconsService } from './services/icons'
 import { fetchNews } from './services/news'
 import { UpdaterService } from './services/updater'
 import { LaunchManager } from './core/launch'
@@ -69,6 +70,7 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   const servers = new ServersService(db)
   const worlds = new WorldsService()
   const screenshots = new ScreenshotsService()
+  const icons = new IconsService()
 
   const send = (channel: string, ...args: unknown[]): void => {
     if (!win.isDestroyed()) win.webContents.send(channel, ...args)
@@ -274,6 +276,18 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
 
   // ---------- news ----------
   ipcMain.handle(IPC.news.fetch, () => fetchNews())
+
+  // ---------- instance icons ----------
+  ipcMain.handle(IPC.icons.importImage, async (_e) => {
+    const res = await dialog.showOpenDialog(win, {
+      title: 'Choose an instance image',
+      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
+      properties: ['openFile']
+    })
+    if (res.canceled || res.filePaths.length === 0) return null
+    return await icons.importImage(res.filePaths[0])
+  })
+  ipcMain.handle(IPC.icons.data, (_e, ref: string) => icons.data(ref))
 
   // ---------- java ----------
   ipcMain.handle(IPC.java.list, () => detectJavas())

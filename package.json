@@ -2,7 +2,7 @@
   "name": "native-launcher",
   "productName": "Native",
   "version": "0.1.0",
-  "description": "Native — a fast, beautiful Minecraft launcher",
+  "description": "Native \u2014 a fast, beautiful Minecraft launcher",
   "main": "./out/main/index.js",
   "author": {
     "name": "Native Contributors",
@@ -32,7 +32,9 @@
     "qa:visual": "playwright test --project visual-qa && node scripts/qa-report.mjs",
     "package:linux": "electron-vite build && electron-builder --linux",
     "package:win": "electron-vite build && electron-builder --win",
-    "package:dir": "electron-vite build && electron-builder --dir"
+    "package:dir": "electron-vite build && electron-builder --dir",
+    "postinstall": "node scripts/patch-nsis.mjs || true",
+    "package:win-host": "electron-vite build && NSIS_UNINSTALLER_READER=true electron-builder --win nsis --x64 -c.win.signAndEditExecutable=false -c.nsis.warningsAsErrors=false"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

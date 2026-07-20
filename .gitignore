@@ -14,3 +14,4 @@ qa-screenshots/*.tmp.png
 .env.local
 dev-app-update.yml
 Native-*-windows-*.zip
+Native-Setup-*.exe
