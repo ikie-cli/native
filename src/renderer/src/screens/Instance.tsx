@@ -16,6 +16,7 @@ import { LOADER_LABELS } from '@shared/types'
 import { useInstances, useRunning, useToasts, toastError } from '@/stores/data'
 import { useNav, type InstanceTab } from '@/stores/nav'
 import { InstanceIcon } from '@/components/InstanceIcon'
+import { LoaderMark } from '@/components/LoaderMark'
 import { Button, Chip, IconButton, Spinner } from '@/components/ui/ui'
 import { PillTabs } from '@/components/ui/tabs'
 import { formatPlaytime } from '@/lib/util'
@@ -111,7 +112,10 @@ function InstanceHeader({ inst }: { inst: InstanceConfig }): React.JSX.Element {
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-h1 text-content-primary">{inst.name}</h1>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <Chip>{LOADER_LABELS[inst.loader]}</Chip>
+          <Chip>
+            <LoaderMark loader={inst.loader} size={13} />
+            {LOADER_LABELS[inst.loader]}
+          </Chip>
           <Chip>{inst.mcVersion}</Chip>
           {inst.loaderVersion && inst.loader !== 'vanilla' && <Chip>{inst.loaderVersion}</Chip>}
           <span className="text-small text-content-muted">

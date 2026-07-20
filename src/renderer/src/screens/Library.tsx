@@ -6,6 +6,7 @@ import { LOADER_LABELS } from '@shared/types'
 import { useInstances, useRunning, useToasts, toastError } from '@/stores/data'
 import { useModals, useNav } from '@/stores/nav'
 import { InstanceIcon } from '@/components/InstanceIcon'
+import { LoaderMark } from '@/components/LoaderMark'
 import { Button, Chip, EmptyState, IconButton, SearchInput } from '@/components/ui/ui'
 import { Select } from '@/components/ui/menu'
 import { InstanceKebab } from '@/screens/Home'
@@ -54,7 +55,10 @@ function InstanceCard({ inst }: { inst: InstanceConfig }): React.JSX.Element {
       <div className="flex flex-1 flex-col p-3.5">
         <div className="truncate text-body font-bold text-content-primary">{inst.name}</div>
         <div className="mt-1 flex items-center gap-1.5">
-          <Chip>{LOADER_LABELS[inst.loader]}</Chip>
+          <Chip>
+            <LoaderMark loader={inst.loader} size={13} />
+            {LOADER_LABELS[inst.loader]}
+          </Chip>
           <Chip>{inst.mcVersion}</Chip>
         </div>
         <div className="mt-2 text-tiny text-content-muted">
@@ -89,7 +93,10 @@ function InstanceRow({ inst }: { inst: InstanceConfig }): React.JSX.Element {
       <div className="min-w-0 flex-1">
         <div className="truncate text-body font-semibold text-content-primary">{inst.name}</div>
         <div className="text-small text-content-secondary">
-          {LOADER_LABELS[inst.loader]} {inst.mcVersion}
+          <span className="inline-flex items-center gap-1.5">
+            <LoaderMark loader={inst.loader} size={13} />
+            {LOADER_LABELS[inst.loader]} {inst.mcVersion}
+          </span>
         </div>
       </div>
       <div className="text-small text-content-muted">

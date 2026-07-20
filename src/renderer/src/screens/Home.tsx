@@ -6,6 +6,7 @@ import { LOADER_LABELS } from '@shared/types'
 import { useInstances, useNews, useRunning, toastError, useToasts } from '@/stores/data'
 import { useModals, useNav } from '@/stores/nav'
 import { InstanceIcon } from '@/components/InstanceIcon'
+import { LoaderMark } from '@/components/LoaderMark'
 import { Button, EmptyState } from '@/components/ui/ui'
 import { DropMenu } from '@/components/ui/menu'
 import { IconButton } from '@/components/ui/ui'
@@ -46,7 +47,8 @@ function JumpBackRow({ inst }: { inst: InstanceConfig }): React.JSX.Element {
             </span>
           )}
           <span className="text-content-muted">•</span>
-          <span className="truncate">
+          <span className="inline-flex min-w-0 items-center gap-1.5 truncate">
+            <LoaderMark loader={inst.loader} size={14} className="shrink-0" />
             {LOADER_LABELS[inst.loader]} {inst.mcVersion}
           </span>
         </div>

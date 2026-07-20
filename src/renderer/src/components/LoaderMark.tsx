@@ -1,14 +1,9 @@
 import type { LoaderKind } from '@shared/types'
 
 /**
- * Hand-drawn minimal marks for each loader — single-stroke currentColor SVGs
- * so they inherit theme tokens everywhere (no emojis, no brand bitmaps).
- *
- *  vanilla   grass block: cube with a distinct top layer
- *  fabric    folded cloth / thread loop
- *  quilt     four patch squares with stitch ticks
- *  forge     anvil
- *  neoforge  fox head (NeoForge's mascot), geometric
+ * Official loader marks as currentColor SVGs, sourced from Modrinth's
+ * open-source frontend (packages/assets/icons/tags/loaders) — the same icons
+ * shown in the reference design. Used solely to identify each loader.
  */
 export function LoaderMark({
   loader,
@@ -22,57 +17,103 @@ export function LoaderMark({
   const common = {
     width: size,
     height: size,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.8,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
     className,
-    'aria-hidden': true
+    'aria-hidden': true as const
   }
   switch (loader) {
     case 'vanilla':
+      // grass-block outline (Modrinth "vanilla" tag icon)
       return (
-        <svg {...common}>
-          <path d="M12 3 4 7.5v9L12 21l8-4.5v-9L12 3Z" />
-          <path d="M4 7.5 12 12l8-4.5" />
-          <path d="M12 12v9" />
-          <path d="M8 5.75 16 10.25" strokeDasharray="1.5 2.6" />
+        <svg {...common} viewBox="0 0 20 20" fill="currentColor">
+          <path
+            fillRule="evenodd"
+            clipRule="evenodd"
+            d="M9.504 1.132a1 1 0 01.992 0l1.75 1a1 1 0 11-.992 1.736L10 3.152l-1.254.716a1 1 0 11-.992-1.736l1.75-1zM5.618 4.504a1 1 0 01-.372 1.364L5.016 6l.23.132a1 1 0 11-.992 1.736L4 7.723V8a1 1 0 01-2 0V6a.996.996 0 01.52-.878l1.734-.99a1 1 0 011.364.372zm8.764 0a1 1 0 011.364-.372l1.733.99A1.002 1.002 0 0118 6v2a1 1 0 11-2 0v-.277l-.254.145a1 1 0 11-.992-1.736l.23-.132-.23-.132a1 1 0 01-.372-1.364zm-7 4a1 1 0 011.364-.372L10 8.848l1.254-.716a1 1 0 11.992 1.736L11 10.58V12a1 1 0 11-2 0v-1.42l-1.246-.712a1 1 0 01-.372-1.364zM3 11a1 1 0 011 1v1.42l1.246.712a1 1 0 11-.992 1.736l-1.75-1A1 1 0 012 14v-2a1 1 0 011-1zm14 0a1 1 0 011 1v2a1 1 0 01-.504.868l-1.75 1a1 1 0 11-.992-1.736L16 13.42V12a1 1 0 011-1zm-9.618 5.504a1 1 0 011.364-.372l.254.145V16a1 1 0 112 0v.277l.254-.145a1 1 0 11.992 1.736l-1.735.992a.995.995 0 01-1.022 0l-1.735-.992a1 1 0 01-.372-1.364z"
+          />
         </svg>
       )
     case 'fabric':
       return (
-        <svg {...common}>
-          <path d="M5 15.5V7.2c0-.9.5-1.6 1.3-1.9L12 3.4l5.7 1.9c.8.3 1.3 1 1.3 1.9v8.3" />
-          <path d="M5 15.5c0 1.2 1 2.2 2.2 2.2h9.6c1.2 0 2.2-1 2.2-2.2" />
-          <path d="M12 3.4v14.3" strokeDasharray="2 2.4" />
-          <path d="M8.5 20.6h7" />
+        <svg
+          {...common}
+          viewBox="0 0 24 24"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path
+            stroke="currentColor"
+            strokeWidth="23"
+            d="m820 761-85.6-87.6c-4.6-4.7-10.4-9.6-25.9 1-19.9 13.6-8.4 21.9-5.2 25.4 8.2 9 84.1 89 97.2 104 2.5 2.8-20.3-22.5-6.5-39.7 5.4-7 18-12 26-3 6.5 7.3 10.7 18-3.4 29.7-24.7 20.4-102 82.4-127 103-12.5 10.3-28.5 2.3-35.8-6-7.5-8.9-30.6-34.6-51.3-58.2-5.5-6.3-4.1-19.6 2.3-25 35-30.3 91.9-73.8 111.9-90.8"
+            transform="matrix(.08671 0 0 .0867 -49.8 -56)"
+          />
         </svg>
       )
     case 'quilt':
       return (
-        <svg {...common}>
-          <rect x="4" y="4" width="7.2" height="7.2" rx="1.6" />
-          <rect x="12.8" y="4" width="7.2" height="7.2" rx="1.6" />
-          <rect x="4" y="12.8" width="7.2" height="7.2" rx="1.6" />
-          <rect x="12.8" y="12.8" width="7.2" height="7.2" rx="3.6" />
-          <path d="M7.6 6.4v2.4M6.4 7.6h2.4" strokeWidth={1.4} />
+        <svg
+          {...common}
+          viewBox="0 0 24 24"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path
+            stroke="currentColor"
+            strokeWidth="65.6"
+            d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z"
+            transform="matrix(.03053 0 0 .03046 -3.2 -3.2)"
+          />
+          <path
+            stroke="currentColor"
+            strokeWidth="65.6"
+            d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z"
+            transform="matrix(.03053 0 0 .03046 -3.2 7)"
+          />
+          <path
+            stroke="currentColor"
+            strokeWidth="65.6"
+            d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z"
+            transform="matrix(.03053 0 0 .03046 6.9 -3.2)"
+          />
+          <path
+            stroke="currentColor"
+            strokeWidth="70.4"
+            d="M442.5 234.8c0-7-5.6-12.5-12.5-12.5H234.7c-6.8 0-12.4 5.6-12.4 12.5V430c0 6.9 5.6 12.5 12.4 12.5H430c6.9 0 12.5-5.6 12.5-12.5V234.8Z"
+            transform="rotate(45 3.5 24) scale(.02843 .02835)"
+          />
         </svg>
       )
     case 'forge':
       return (
-        <svg {...common}>
-          <path d="M4 7h13.5c-.4 2.4-2 3.8-4.5 4.3v3.2c1.6.5 2.6 1.6 3 3.5H7c.4-1.9 1.4-3 3-3.5v-3C6.4 11 4.4 9.4 4 7Z" />
-          <path d="M17.5 7H20v2h-2" />
+        <svg
+          {...common}
+          viewBox="0 0 24 24"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path
+            stroke="currentColor"
+            strokeWidth="2"
+            d="M2 7.5h8v-2h12v2s-7 3.4-7 6 3.1 3.1 3.1 3.1l.9 3.9H5l1-4.1s3.8.1 4-2.9c.2-2.7-6.5-.7-8-6Z"
+          />
         </svg>
       )
     case 'neoforge':
       return (
-        <svg {...common}>
-          <path d="M5 5.5 8.4 8h7.2L19 5.5V11c0 4.5-3 7.5-7 8.5-4-1-7-4-7-8.5V5.5Z" />
-          <path d="M9 12.2h.01M15 12.2h.01" strokeWidth={2.6} />
-          <path d="M10.6 15.4c.9.7 1.9.7 2.8 0" />
+        <svg {...common} viewBox="0 0 24 24" fill="none">
+          <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2">
+            <path d="m12 19.2v2m0-2v2" />
+            <path d="m8.4 1.3c0.5 1.5 0.7 3 0.1 4.6-0.2 0.5-0.9 1.5-1.6 1.5m8.7-6.1c-0.5 1.5-0.7 3-0.1 4.6 0.2 0.6 0.9 1.5 1.6 1.5" />
+            <path d="m3.6 15.8h-1.7m18.5 0h1.7" />
+            <path d="m3.2 12.1h-1.7m19.3 0h1.8" />
+            <path d="m8.1 12.7v1.6m7.8-1.6v1.6" />
+            <path d="m10.8 18h1.2m0 1.2-1.2-1.2m2.4 0h-1.2m0 1.2 1.2-1.2" />
+            <path d="m4 9.7c-0.5 1.2-0.8 2.4-0.8 3.7 0 3.1 2.9 6.3 5.3 8.2 0.9 0.7 2.2 1.1 3.4 1.1m0.1-17.8c-1.1 0-2.1 0.2-3.2 0.7m11.2 4.1c0.5 1.2 0.8 2.4 0.8 3.7 0 3.1-2.9 6.3-5.3 8.2-0.9 0.7-2.2 1.1-3.4 1.1m-0.1-17.8c1.1 0 2.1 0.2 3.2 0.7" />
+            <path d="m4 9.7c-0.2-1.8-0.3-3.7 0.5-5.5s2.2-2.6 3.9-3m11.6 8.5c0.2-1.9 0.3-3.7-0.5-5.5s-2.2-2.6-3.9-3" />
+            <path d="m12 21.2-2.4 0.4m2.4-0.4 2.4 0.4" />
+          </g>
         </svg>
       )
   }
