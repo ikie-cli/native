@@ -13,3 +13,4 @@ qa-screenshots/*.tmp.png
 .env
 .env.local
 dev-app-update.yml
+Native-*-windows-*.zip
