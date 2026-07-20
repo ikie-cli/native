@@ -14,22 +14,54 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const target = join(root, 'node_modules/app-builder-lib/out/targets/nsis/NsisTarget.js')
 
-if (!existsSync(target)) {
-  console.log('[patch-nsis] app-builder-lib not present — skipping')
-  process.exit(0)
+function patch(file, needle, replacement, label) {
+  if (!existsSync(file)) {
+    console.log(`[patch-nsis] ${label}: file missing — skipping`)
+    return
+  }
+  const src = readFileSync(file, 'utf-8')
+  if (src.includes(replacement)) {
+    console.log(`[patch-nsis] ${label}: already patched`)
+  } else if (src.includes(needle)) {
+    writeFileSync(file, src.replace(needle, replacement))
+    console.log(`[patch-nsis] ${label}: applied`)
+  } else {
+    console.warn(`[patch-nsis] ${label}: anchor not found — skipped`)
+  }
 }
 
-const src = readFileSync(target, 'utf-8')
-const needle = 'if ((0, macosVersion_1.isMacOsCatalina)()) {'
-const patched = 'if ((0, macosVersion_1.isMacOsCatalina)() || process.env.NSIS_UNINSTALLER_READER === "true") {'
+// 1. Allow the pure-JS uninstaller extractor off-macOS (no wine needed).
+patch(
+  join(root, 'node_modules/app-builder-lib/out/targets/nsis/NsisTarget.js'),
+  'if ((0, macosVersion_1.isMacOsCatalina)()) {',
+  'if ((0, macosVersion_1.isMacOsCatalina)() || process.env.NSIS_UNINSTALLER_READER === "true") {',
+  'uninstaller extractor'
+)
 
-if (src.includes(patched)) {
-  console.log('[patch-nsis] already patched')
-} else if (src.includes(needle)) {
-  writeFileSync(target, src.replace(needle, patched))
-  console.log('[patch-nsis] applied')
-} else {
-  console.warn('[patch-nsis] anchor not found — electron-builder layout changed; NSIS-on-arm64 patch skipped')
-}
+// 2. UninstallerReader: accept mingw-built stubs (.idata/.bss/.ndata carry
+//    raw data in Debian's NSIS 3.05) — any raw section extends the PE end.
+patch(
+  join(root, 'node_modules/app-builder-lib/out/targets/nsis/nsisUtil.js'),
+  `            switch (name) {
+                case ".text":
+                case ".rdata":
+                case ".data":
+                case ".rsrc": {
+                    nsisOffset = Math.max(rawPointer + rawSize, nsisOffset);
+                    break;
+                }
+                default: {
+                    if (rawPointer !== 0 && rawSize !== 0) {
+                        throw new Error("Unsupported section '" + name + "'.");
+                    }
+                    break;
+                }
+            }`,
+  `            // Patched (Native): any section with raw data extends the PE end;
+            // non-MSVC stubs (mingw builds: .idata/.bss/.ndata with data) are fine.
+            if (rawPointer !== 0 && rawSize !== 0) {
+                nsisOffset = Math.max(rawPointer + rawSize, nsisOffset);
+            }`,
+  'section reader'
+)
