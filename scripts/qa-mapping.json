@@ -1,0 +1,22 @@
+{
+  "comment": "qa-screenshots/<name>.png → closest reference in screenshots/. Weights: which aspects that reference is meant to validate.",
+  "mappings": {
+    "home": "ref-113405.png",
+    "home-empty": "ref-113405.png",
+    "library": "ref-113521.png",
+    "library-empty": "ref-113521.png",
+    "discover": "ref-113424.png",
+    "discover-error": "ref-113424.png",
+    "instance-content": "ref-113533.png",
+    "instance-worlds": "ref-113533.png",
+    "instance-screenshots": "ref-113533.png",
+    "instance-logs": "ref-113614.png",
+    "instance-options": "ref-113533.png",
+    "launch-console": "ref-113614.png",
+    "servers": "ref-113521.png",
+    "servers-empty": "ref-113521.png",
+    "create-instance": "ref-113634.png",
+    "settings": "ref-113645.png",
+    "accounts": "ref-113623.png"
+  }
+}

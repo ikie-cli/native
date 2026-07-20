@@ -1,0 +1,108 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource/jetbrains-mono';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Design tokens (design-system.md §1, §8) ---- */
+:root,
+:root[data-theme='dark'] {
+  --surface-window: #111317;
+  --surface-base: #16181c;
+  --surface-raised: #27292e;
+  --surface-inset: #1d1f23;
+  --surface-input: #34363c;
+  --surface-hover: #31343a;
+  --surface-active: #3c3f46;
+  --text-primary: #ffffff;
+  --text-secondary: #9ba1ac;
+  --text-muted: #6e7580;
+  --chip-bg: #383b42;
+  --chip-text: #b5bac2;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.14);
+}
+
+:root[data-theme='oled'] {
+  --surface-window: #000000;
+  --surface-base: #000000;
+  --surface-raised: #111317;
+  --surface-inset: #0a0c0e;
+  --surface-input: #1d2025;
+  --surface-hover: #191c20;
+  --surface-active: #24272c;
+}
+
+:root[data-theme='light'] {
+  --surface-window: #e8ebee;
+  --surface-base: #f4f6f8;
+  --surface-raised: #ffffff;
+  --surface-inset: #eceff2;
+  --surface-input: #e3e7eb;
+  --surface-hover: #eef1f4;
+  --surface-active: #dfe3e8;
+  --text-primary: #17191d;
+  --text-secondary: #4d5560;
+  --text-muted: #7b828c;
+  --chip-bg: #e3e7eb;
+  --chip-text: #4d5560;
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-strong: rgba(0, 0, 0, 0.16);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  @apply bg-surface-window font-sans text-body text-content-primary antialiased;
+  user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+/* ---- Scrollbars (design-system.md §1) ---- */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--surface-active);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #4a4e56;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Focus rings — accent, keyboard only */
+:focus-visible {
+  outline: 2px solid rgba(27, 217, 106, 0.6);
+  outline-offset: 1px;
+}
+
+/* Window drag regions for the frameless titlebar */
+.drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* GPU-friendly progress fill: scaleX on a full-width bar */
+.progress-fill {
+  transform-origin: left center;
+  will-change: transform;
+}

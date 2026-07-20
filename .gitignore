@@ -1,0 +1,15 @@
+node_modules/
+out/
+dist/
+*.log
+.DS_Store
+.eslintcache
+coverage/
+test-results/
+playwright-report/
+.tmp/
+tmp/
+qa-screenshots/*.tmp.png
+.env
+.env.local
+dev-app-update.yml

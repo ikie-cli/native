@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+      - run: npm run typecheck
+
+      # Unit + renderer + integration (needs Node-ABI better-sqlite3 + a JDK)
+      - run: npm run rebuild:node
+      - run: npx vitest run
+
+      # Build app bundles, then Electron-ABI native modules for E2E
+      - run: npm run build
+      - run: npm run rebuild:electron
+
+      # E2E + visual QA (Linux under Xvfb; Windows headed)
+      - name: E2E (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a --server-args='-screen 0 1600x900x24' npx playwright test --project e2e
+      - name: E2E (Windows)
+        if: runner.os == 'Windows'
+        run: npx playwright test --project e2e
+
+      - name: Visual QA (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a --server-args='-screen 0 1600x900x24' npx playwright test --project visual-qa
+          node scripts/qa-report.mjs
+      - name: Upload QA report
+        if: runner.os == 'Linux' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-report
+          path: |
+            qa-report.md
+            qa-screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: test-results/
+          if-no-files-found: ignore
+
+  package:
+    name: Package (${{ matrix.os }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            script: package:linux
+            artifacts: |
+              dist/*.AppImage
+              dist/*.deb
+          - os: windows-2022
+            script: package:win
+            artifacts: dist/*.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ${{ matrix.script }}
+        env:
+          # electron-builder auto-publishes when GH_TOKEN is present on tags
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.os }}
+          path: ${{ matrix.artifacts }}
+
+  release:
+    name: Release (tagged)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: dist
+      - name: Create GitHub Release with update feed
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest*.yml
+          generate_release_notes: true

@@ -1,0 +1,70 @@
+appId: app.nativelauncher.desktop
+productName: Native
+copyright: Copyright © 2026 Native Contributors
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**
+  - package.json
+  - '!node_modules/**/{CHANGELOG.md,README.md,readme.md,test,__tests__,tests,powered-test,example,examples}'
+asarUnpack:
+  - '**/*.node'
+npmRebuild: true
+electronLanguages:
+  - en-US
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  executableName: Native
+  icon: build/icon.ico
+  artifactName: ${productName}-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+  shortcutName: Native
+  differentialPackage: true
+
+linux:
+  target:
+    - target: AppImage
+    - target: deb
+  icon: build/icon.png
+  category: Game
+  maintainer: Native Contributors <hello@native.example>
+  synopsis: A fast, beautiful Minecraft launcher
+  description: >-
+    Native is a fast, beautiful Minecraft launcher with instances, mod loaders
+    (Fabric, Quilt, Forge, NeoForge), Modrinth/CurseForge content search,
+    servers, worlds and automatic updates.
+  artifactName: ${productName}-${version}-${arch}.${ext}
+deb:
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0
+appImage:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+mac:
+  # macOS is planned for a later phase; config kept minimal & cross-platform-safe.
+  category: public.app-category.games
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+
+publish:
+  provider: github
+  owner: native-launcher
+  repo: native
+  releaseType: release
