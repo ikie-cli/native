@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Native — a fast, beautiful Minecraft launcher</title>
+  <meta name="description" content="Native is a fast, beautiful Minecraft launcher for Windows and Linux. Instances, one-click Fabric/Quilt/Forge/NeoForge, Modrinth search, servers, worlds, and auto-updates — in a pure black &amp; white design." />
+  <meta property="og:title" content="Native — a fast, beautiful Minecraft launcher" />
+  <meta property="og:description" content="Instances, one-click mod loaders, Modrinth search, servers, worlds, auto-updates. Windows &amp; Linux." />
+  <meta property="og:image" content="assets/shot-home.png" />
+  <link rel="icon" type="image/png" href="assets/favicon-mono.png" />
+  <style>
+    /* ---- Mono tokens (mirrors the app's design system) ---- */
+    :root {
+      --bg: #000000;
+      --base: #050505;
+      --raised: #121212;
+      --inset: #0a0a0a;
+      --input: #1c1c1c;
+      --hover: #181818;
+      --active: #262626;
+      --text: #ffffff;
+      --text-2: #a3a3a3;
+      --text-3: #666666;
+      --line: rgba(255, 255, 255, 0.08);
+      --line-strong: rgba(255, 255, 255, 0.18);
+      --accent: #ffffff;
+      --accent-contrast: #000000;
+      --ease: cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    ::selection { background: var(--text); color: var(--bg); }
+    a { color: inherit; }
+
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+    /* ---- Header ---- */
+    header {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(14px);
+      background: rgba(0, 0, 0, 0.72);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav {
+      display: flex; align-items: center; gap: 28px;
+      height: 60px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -0.02em; text-decoration: none; }
+    .brand img { width: 26px; height: 26px; border-radius: 7px; }
+    .nav-links { display: flex; gap: 22px; margin-left: auto; }
+    .nav-links a { color: var(--text-2); text-decoration: none; font-size: 14px; font-weight: 600; transition: color 140ms; }
+    .nav-links a:hover { color: var(--text); }
+    .nav .cta { margin-left: 8px; }
+
+    /* ---- Buttons ---- */
+    .btn {
+      display: inline-flex; align-items: center; gap: 9px;
+      height: 44px; padding: 0 22px; border-radius: 999px;
+      font-size: 14.5px; font-weight: 700; text-decoration: none;
+      border: none; cursor: pointer;
+      transition: transform 140ms var(--ease), background 140ms, opacity 140ms;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent); color: var(--accent-contrast); }
+    .btn-primary:hover { background: #d9d9d9; }
+    .btn-ghost { background: var(--input); color: var(--text); }
+    .btn-ghost:hover { background: var(--active); }
+    .btn svg { flex-shrink: 0; }
+    .btn small { font-weight: 500; opacity: 0.65; margin-left: 2px; }
+
+    /* ---- Hero ---- */
+    .hero { padding: 96px 0 40px; text-align: center; position: relative; }
+    .hero::before {
+      content: ''; position: absolute; inset: -200px 0 0;
+      background: radial-gradient(560px 380px at 50% 0%, rgba(255,255,255,0.07), transparent 70%);
+      pointer-events: none;
+    }
+    .hero h1 {
+      font-size: clamp(40px, 7vw, 68px);
+      line-height: 1.04; font-weight: 800; letter-spacing: -0.035em;
+    }
+    .hero h1 .dim { color: var(--text-3); }
+    .hero p.lede {
+      margin: 22px auto 0; max-width: 560px;
+      color: var(--text-2); font-size: 18px;
+    }
+    .hero .actions { margin-top: 34px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .hero .meta { margin-top: 16px; color: var(--text-3); font-size: 13px; }
+    .hero .meta a { color: var(--text-2); }
+
+    /* ---- App frame screenshot ---- */
+    .frame {
+      margin: 56px auto 0; max-width: 980px;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px; overflow: hidden;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.03);
+      background: var(--raised);
+    }
+    .frame img { display: block; width: 100%; height: auto; }
+
+    /* ---- Sections ---- */
+    section { padding: 88px 0; }
+    .kicker {
+      display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-3); margin-bottom: 14px;
+    }
+    h2 { font-size: clamp(28px, 4.5vw, 40px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.12; }
+    .sub { color: var(--text-2); margin-top: 12px; max-width: 620px; font-size: 16.5px; }
+
+    /* ---- Feature grid ---- */
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 44px; }
+    @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--raised); border: 1px solid var(--line);
+      border-radius: 16px; padding: 24px;
+      transition: border-color 180ms, transform 180ms var(--ease);
+    }
+    .card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+    .card .ic {
+      width: 40px; height: 40px; border-radius: 999px;
+      background: var(--input); display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+    .card h3 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+    .card p { color: var(--text-2); font-size: 14px; margin-top: 7px; }
+
+    /* ---- Screens showcase ---- */
+    .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 44px; }
+    @media (max-width: 720px) { .shots { grid-template-columns: 1fr; } }
+    .shot {
+      border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+      background: var(--raised); transition: border-color 180ms;
+    }
+    .shot:hover { border-color: var(--line-strong); }
+    .shot img { display: block; width: 100%; height: auto; }
+    .shot figcaption { padding: 13px 18px; font-size: 13.5px; color: var(--text-2); border-top: 1px solid var(--line); }
+
+    /* ---- Loaders strip ---- */
+    .loaders { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 36px; }
+    .loader-pill {
+      display: inline-flex; align-items: center; gap: 10px;
+      height: 44px; padding: 0 20px; border-radius: 999px;
+      background: var(--raised); border: 1px solid var(--line);
+      font-size: 14.5px; font-weight: 600; color: var(--text-2);
+      transition: color 140ms, border-color 140ms;
+    }
+    .loader-pill:hover { color: var(--text); border-color: var(--line-strong); }
+    .loader-pill svg { width: 19px; height: 19px; }
+
+    /* ---- Download section ---- */
+    .dl { text-align: center; border-top: 1px solid var(--line); }
+    .dl-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 44px; }
+    @media (max-width: 760px) { .dl-cards { grid-template-columns: 1fr; } }
+    .dl-card {
+      background: var(--raised); border: 1px solid var(--line);
+      border-radius: 16px; padding: 30px 24px; text-align: center;
+      transition: border-color 180ms, transform 180ms var(--ease);
+    }
+    .dl-card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+    .dl-card .os { font-size: 30px; margin-bottom: 8px; display: flex; justify-content: center; }
+    .dl-card h3 { font-size: 17px; font-weight: 700; }
+    .dl-card p { color: var(--text-3); font-size: 13px; margin: 6px 0 18px; }
+    .dl-card .btn { width: 100%; justify-content: center; }
+    .dl-card.soon { opacity: 0.55; }
+    .dl-card.soon .btn { pointer-events: none; background: var(--input); color: var(--text-3); }
+
+    /* ---- Footer ---- */
+    footer { border-top: 1px solid var(--line); padding: 44px 0 60px; color: var(--text-3); font-size: 13.5px; }
+    .foot { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .foot .brand { font-size: 15px; }
+    .foot .links { margin-left: auto; display: flex; gap: 18px; }
+    .foot a { color: var(--text-3); text-decoration: none; }
+    .foot a:hover { color: var(--text-2); }
+    .disclaimer { margin-top: 18px; max-width: 640px; }
+
+    /* ---- Reveal on scroll ---- */
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity 600ms var(--ease), transform 600ms var(--ease); }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; transition: none; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#">
+      <img src="assets/favicon-mono.png" alt="" width="26" height="26" />
+      Native
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#screens">Screens</a>
+      <a href="#download">Download</a>
+      <a href="https://github.com/native-launcher/native">GitHub</a>
+    </nav>
+    <a class="btn btn-primary cta" style="height:38px;padding:0 18px;font-size:13.5px" href="#download">Download</a>
+  </div>
+</header>
+
+<main>
+  <!-- ======= Hero ======= -->
+  <div class="hero wrap">
+    <h1>The Minecraft launcher,<br /><span class="dim">in black &amp; white.</span></h1>
+    <p class="lede">
+      Native is a fast, focused launcher for Windows and Linux. Instances, one-click mod
+      loaders, Modrinth search, servers, worlds — with sign-in that just works.
+    </p>
+    <div class="actions">
+      <a class="btn btn-primary" href="#download">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M4 19h16"/></svg>
+        Download for free
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/native-launcher/native">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.3 9.4 7.86 10.92.58.1.8-.25.8-.56v-2.17c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A10.52 10.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
+        View source
+      </a>
+    </div>
+    <p class="meta">v0.1.0 · free &amp; open source · auto-updates built in</p>
+
+    <figure class="frame reveal">
+      <img src="assets/shot-home.png" alt="Native home screen — instance list with play buttons and news" width="1366" height="768" />
+    </figure>
+  </div>
+
+  <!-- ======= Features ======= -->
+  <section id="features">
+    <div class="wrap">
+      <span class="kicker reveal">Everything you need</span>
+      <h2 class="reveal">Nine features. Zero clutter.</h2>
+      <p class="sub reveal">Every capability of a heavyweight launcher, wrapped in an interface that stays out of your way.</p>
+
+      <div class="grid">
+        <div class="card reveal">
+          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg></div>
+          <h3>Instances</h3>
+          <p>Isolated setups per pack or version. Create, duplicate, custom images, per-instance RAM and JVM flags, playtime tracking.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="M4 7.5 12 12l8-4.5M12 12v9"/></svg></div>
+          <h3>One-click mod loaders</h3>
+          <p>Fabric, Quilt, Forge, and NeoForge install themselves — with the right Java (8/17/21) fetched automatically.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+          <h3>Modrinth built in</h3>
+          <p>Search mods, resource packs, and shaders in-app. One-click installs resolve required dependencies for you.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
+          <h3>Bulletproof downloads</h3>
+          <p>Parallel, resumable, checksum-verified. Real speed and ETA. Corrupt files self-heal on the next launch.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M8 20h8m-4-4v4"/></svg></div>
+          <h3>Servers</h3>
+          <p>Live status, MOTD, player counts and ping for your server list — then quick-join straight into the game.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3Z"/></svg></div>
+          <h3>Worlds &amp; screenshots</h3>
+          <p>Browse singleplayer worlds, back them up to zip, and flip through your in-game screenshots without leaving the launcher.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg></div>
+          <h3>Sign-in that just works</h3>
+          <p>Microsoft login in a popup window — no setup, no codes to copy. Tokens live encrypted in your OS keychain. Offline profiles included.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 12.5H11L9.5 22 19 10.5h-6.5L13 2Z"/></svg></div>
+          <h3>Fast &amp; smooth</h3>
+          <p>Under a second to launch. 60&nbsp;fps everywhere. Downloads never block the interface — heavy work runs off-thread.</p>
+        </div>
+        <div class="card reveal">
+          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></div>
+          <h3>Auto-updates</h3>
+          <p>Checks quietly, downloads in the background, applies on restart. Delta updates on Windows keep them small.</p>
+        </div>
+      </div>
+
+      <div class="loaders reveal">
+        <span class="loader-pill">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.504 1.132a1 1 0 01.992 0l1.75 1a1 1 0 11-.992 1.736L10 3.152l-1.254.716a1 1 0 11-.992-1.736l1.75-1zM5.618 4.504a1 1 0 01-.372 1.364L5.016 6l.23.132a1 1 0 11-.992 1.736L4 7.723V8a1 1 0 01-2 0V6a.996.996 0 01.52-.878l1.734-.99a1 1 0 011.364.372zm8.764 0a1 1 0 011.364-.372l1.733.99A1.002 1.002 0 0118 6v2a1 1 0 11-2 0v-.277l-.254.145a1 1 0 11-.992-1.736l.23-.132-.23-.132a1 1 0 01-.372-1.364zm-7 4a1 1 0 011.364-.372L10 8.848l1.254-.716a1 1 0 11.992 1.736L11 10.58V12a1 1 0 11-2 0v-1.42l-1.246-.712a1 1 0 01-.372-1.364zM3 11a1 1 0 011 1v1.42l1.246.712a1 1 0 11-.992 1.736l-1.75-1A1 1 0 012 14v-2a1 1 0 011-1zm14 0a1 1 0 011 1v2a1 1 0 01-.504.868l-1.75 1a1 1 0 11-.992-1.736L16 13.42V12a1 1 0 011-1zm-9.618 5.504a1 1 0 011.364-.372l.254.145V16a1 1 0 112 0v.277l.254-.145a1 1 0 11.992 1.736l-1.735.992a.995.995 0 01-1.022 0l-1.735-.992a1 1 0 01-.372-1.364z"/></svg>
+          Vanilla
+        </span>
+        <span class="loader-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="23" d="m820 761-85.6-87.6c-4.6-4.7-10.4-9.6-25.9 1-19.9 13.6-8.4 21.9-5.2 25.4 8.2 9 84.1 89 97.2 104 2.5 2.8-20.3-22.5-6.5-39.7 5.4-7 18-12 26-3 6.5 7.3 10.7 18-3.4 29.7-24.7 20.4-102 82.4-127 103-12.5 10.3-28.5 2.3-35.8-6-7.5-8.9-30.6-34.6-51.3-58.2-5.5-6.3-4.1-19.6 2.3-25 35-30.3 91.9-73.8 111.9-90.8" transform="matrix(.08671 0 0 .0867 -49.8 -56)"/></svg>
+          Fabric
+        </span>
+        <span class="loader-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 -3.2 -3.2)"/><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 -3.2 7)"/><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 6.9 -3.2)"/><path stroke="currentColor" stroke-width="70.4" d="M442.5 234.8c0-7-5.6-12.5-12.5-12.5H234.7c-6.8 0-12.4 5.6-12.4 12.5V430c0 6.9 5.6 12.5 12.4 12.5H430c6.9 0 12.5-5.6 12.5-12.5V234.8Z" transform="rotate(45 3.5 24) scale(.02843 .02835)"/></svg>
+          Quilt
+        </span>
+        <span class="loader-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="2" d="M2 7.5h8v-2h12v2s-7 3.4-7 6 3.1 3.1 3.1 3.1l.9 3.9H5l1-4.1s3.8.1 4-2.9c.2-2.7-6.5-.7-8-6Z"/></svg>
+          Forge
+        </span>
+        <span class="loader-pill">
+          <svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="m12 19.2v2m0-2v2"/><path d="m8.4 1.3c0.5 1.5 0.7 3 0.1 4.6-0.2 0.5-0.9 1.5-1.6 1.5m8.7-6.1c-0.5 1.5-0.7 3-0.1 4.6 0.2 0.6 0.9 1.5 1.6 1.5"/><path d="m3.6 15.8h-1.7m18.5 0h1.7"/><path d="m3.2 12.1h-1.7m19.3 0h1.8"/><path d="m8.1 12.7v1.6m7.8-1.6v1.6"/><path d="m10.8 18h1.2m0 1.2-1.2-1.2m2.4 0h-1.2m0 1.2 1.2-1.2"/><path d="m4 9.7c-0.5 1.2-0.8 2.4-0.8 3.7 0 3.1 2.9 6.3 5.3 8.2 0.9 0.7 2.2 1.1 3.4 1.1m0.1-17.8c-1.1 0-2.1 0.2-3.2 0.7m11.2 4.1c0.5 1.2 0.8 2.4 0.8 3.7 0 3.1-2.9 6.3-5.3 8.2-0.9 0.7-2.2 1.1-3.4 1.1m-0.1-17.8c1.1 0 2.1 0.2 3.2 0.7"/><path d="m4 9.7c-0.2-1.8-0.3-3.7 0.5-5.5s2.2-2.6 3.9-3m11.6 8.5c0.2-1.9 0.3-3.7-0.5-5.5s-2.2-2.6-3.9-3"/><path d="m12 21.2-2.4 0.4m2.4-0.4 2.4 0.4"/></g></svg>
+          NeoForge
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======= Screens ======= -->
+  <section id="screens" style="padding-top: 0">
+    <div class="wrap">
+      <span class="kicker reveal">A closer look</span>
+      <h2 class="reveal">Designed in monochrome.</h2>
+      <p class="sub reveal">Pure black surfaces, white accents, and color only where it means something. Prefer the classic green? It's one toggle away in Settings.</p>
+      <div class="shots">
+        <figure class="shot reveal">
+          <img src="assets/shot-library.png" alt="Library grid of instances" loading="lazy" width="1366" height="768" />
+          <figcaption>Your library — every instance one click from playing</figcaption>
+        </figure>
+        <figure class="shot reveal">
+          <img src="assets/shot-instance.png" alt="Instance detail with content manager" loading="lazy" width="1366" height="768" />
+          <figcaption>Mods, worlds, screenshots, logs and options per instance</figcaption>
+        </figure>
+        <figure class="shot reveal">
+          <img src="assets/shot-create.png" alt="Create instance dialog" loading="lazy" width="1366" height="768" />
+          <figcaption>New instance in seconds — loader, version, done</figcaption>
+        </figure>
+        <figure class="shot reveal">
+          <img src="assets/shot-home.png" alt="Home screen" loading="lazy" width="1366" height="768" />
+          <figcaption>Home — jump back in where you left off</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======= Download ======= -->
+  <section id="download" class="dl">
+    <div class="wrap">
+      <span class="kicker reveal">Get Native</span>
+      <h2 class="reveal">Download v0.1.0</h2>
+      <p class="sub reveal" style="margin-left:auto;margin-right:auto">Free and open source. Auto-updates keep you current after the first install.</p>
+      <div class="dl-cards">
+        <div class="dl-card reveal">
+          <div class="os">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5 10.5 4.4v7.1H3V5.5ZM3 18.5v-6h7.5v7.1L3 18.5ZM11.5 4.2 21 3v8.5h-9.5V4.2ZM21 12.5V21l-9.5-1.2v-7.3H21Z"/></svg>
+          </div>
+          <h3>Windows</h3>
+          <p>Windows 10 / 11 · 64-bit · installer with auto-updates</p>
+          <a class="btn btn-primary" href="https://github.com/native-launcher/native/releases/latest/download/Native-Setup-0.1.0.exe">
+            Download Setup <small>.exe · 79 MB</small>
+          </a>
+          <p style="margin:12px 0 0"><a href="https://github.com/native-launcher/native/releases/latest/download/Native-0.1.0-windows-x64.zip" style="color:var(--text-3)">or portable .zip</a></p>
+        </div>
+        <div class="dl-card reveal">
+          <div class="os">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-2 0-3.5 1.6-3.5 3.6 0 1.2.1 2-.4 3.2-.8 1.8-2.8 3.5-3.6 5.9-.6 1.9-.2 4 1.2 5.4.9.9 3 .9 4.1.4a5.4 5.4 0 0 1 4.4 0c1.1.5 3.2.5 4.1-.4 1.4-1.4 1.8-3.5 1.2-5.4-.8-2.4-2.8-4.1-3.6-5.9-.5-1.2-.4-2-.4-3.2C15.5 3.6 14 2 12 2Z"/><path d="M9.5 8.5h.01M14.5 8.5h.01"/></svg>
+          </div>
+          <h3>Linux</h3>
+          <p>AppImage with auto-updates · .deb via releases</p>
+          <a class="btn btn-primary" href="https://github.com/native-launcher/native/releases/latest/download/Native-0.1.0-arm64.AppImage">
+            Download AppImage <small>101 MB</small>
+          </a>
+          <p style="margin:12px 0 0"><a href="https://github.com/native-launcher/native/releases/latest" style="color:var(--text-3)">all Linux builds</a></p>
+        </div>
+        <div class="dl-card soon reveal">
+          <div class="os">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 12.9c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-2-.9-3.2-.9C6.7 7.3 5.1 8.3 4.2 9.8c-1.8 3.1-.5 7.8 1.3 10.3.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.5 0 2 .8 3.3.8 1.4 0 2.2-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9-.1 0-2.8-1.1-2.8-4.4ZM14.3 5.1c.7-.8 1.1-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4Z"/></svg>
+          </div>
+          <h3>macOS</h3>
+          <p>Planned — next phase</p>
+          <a class="btn" href="#">Coming soon</a>
+        </div>
+      </div>
+      <p class="meta reveal" style="margin-top:26px;color:var(--text-3);font-size:13px">
+        Unsigned builds: Windows SmartScreen may ask once — choose “More info → Run anyway”.
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <a class="brand" href="#">
+        <img src="assets/favicon-mono.png" alt="" width="22" height="22" />
+        Native
+      </a>
+      <nav class="links">
+        <a href="https://github.com/native-launcher/native">GitHub</a>
+        <a href="https://github.com/native-launcher/native/releases">Releases</a>
+        <a href="https://github.com/native-launcher/native/issues">Issues</a>
+        <a href="https://github.com/native-launcher/native/blob/main/LICENSE">MIT License</a>
+      </nav>
+    </div>
+    <p class="disclaimer">
+      Native is an independent open-source project, not affiliated with Mojang, Microsoft, or
+      Minecraft. You must own Minecraft: Java Edition to play online. Loader marks courtesy of
+      the Modrinth open-source icon set.
+    </p>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal — IntersectionObserver, transform/opacity only.
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          e.target.classList.add('in')
+          io.unobserve(e.target)
+        }
+      }
+    },
+    { threshold: 0.12 }
+  )
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el))
+</script>
+
+</body>
+</html>
