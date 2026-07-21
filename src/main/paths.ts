@@ -52,6 +52,8 @@ export const paths = {
   instances: () => join(dataRoot(), 'instances'),
   instance: (id: string) => join(dataRoot(), 'instances', id),
   instanceGameDir: (id: string) => join(dataRoot(), 'instances', id, 'minecraft'),
+  /** Per-instance saved launch logs (one file per session). */
+  instanceLogsDir: (id: string) => join(dataRoot(), 'instances', id, 'logs'),
   libraries: () => join(dataRoot(), 'libraries'),
   assets: () => join(dataRoot(), 'assets'),
   versions: () => join(dataRoot(), 'versions'),

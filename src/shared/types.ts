@@ -120,6 +120,18 @@ export interface LogLine {
   text: string
 }
 
+/** A saved past launch, one per session file on disk. */
+export interface LogSession {
+  /** Filename, e.g. `1721570000000.log` — the id passed to read/delete. */
+  file: string
+  /** Launch start time (epoch ms), parsed from the filename. */
+  startedAt: number
+  /** File size in bytes. */
+  size: number
+  /** True when the session ended in a crash (`.crash.log`). */
+  crashed: boolean
+}
+
 export interface CrashInfo {
   instanceId: string
   exitCode: number | null

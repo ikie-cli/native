@@ -6,6 +6,7 @@ import type { CrashInfo, InstanceConfig, RunningGame } from '../../src/shared/ty
 import { DownloadTask } from '../../src/main/core/download'
 import { installVersion } from '../../src/main/core/install'
 import { LaunchManager } from '../../src/main/core/launch'
+import { LogsService } from '../../src/main/services/logs'
 import { installLoader, listLoaderVersions, pickLoaderVersion } from '../../src/main/core/loaders'
 import { resolveVersionJson } from '../../src/main/core/manifest'
 import {
@@ -133,6 +134,73 @@ describe.skipIf(!java)('download → install → launch pipeline', () => {
     expect(playtimes[0][2]).toBeGreaterThanOrEqual(playtimes[0][1])
     expect(changed.length).toBeGreaterThanOrEqual(2) // started + stopped
     expect(lm.list()).toHaveLength(0)
+  })
+
+  it('saves the session to disk and reads it back via LogsService', async () => {
+    const fake = await installFakeVersionFixture(fx, dir)
+    await writeLocalVersionJson(dir, fake.versionJson)
+    const lm = manager(fake.versionId, [])
+    const inst = fakeInstance(fake.versionId, { id: 'inst-session' })
+
+    await lm.launch(inst, { javaOverride: java })
+    await new Promise<void>((resolve) => {
+      const check = (): void => {
+        if (lm.isRunning(inst.id)) setTimeout(check, 100)
+        else resolve()
+      }
+      check()
+    })
+
+    // The session file is finalized asynchronously after exit — poll for it.
+    const logsSvc = new LogsService()
+    let sessions = await logsSvc.sessions(inst.id)
+    for (let i = 0; i < 50 && sessions.length === 0; i++) {
+      await new Promise((r) => setTimeout(r, 100))
+      sessions = await logsSvc.sessions(inst.id)
+    }
+
+    expect(sessions).toHaveLength(1)
+    expect(sessions[0].crashed).toBe(false)
+    expect(sessions[0].size).toBeGreaterThan(0)
+    expect(sessions[0].startedAt).toBeGreaterThan(0)
+
+    const lines = await logsSvc.read(inst.id, sessions[0].file)
+    expect(lines.some((l) => l.text.includes('FakeClient starting'))).toBe(true)
+    expect(lines.some((l) => l.text.includes('FakeClient done'))).toBe(true)
+    // The `# …` header comment must be filtered out of the returned lines.
+    expect(lines.every((l) => !l.text.startsWith('# '))).toBe(true)
+
+    await logsSvc.delete(inst.id, sessions[0].file)
+    expect(await logsSvc.sessions(inst.id)).toHaveLength(0)
+  })
+
+  it('marks a crashed session as .crash.log', async () => {
+    const fake = await installFakeVersionFixture(fx, dir, {
+      versionId: 'crash-session-1.0',
+      gameArgs: ['--crash']
+    })
+    await writeLocalVersionJson(dir, fake.versionJson)
+    const lm = manager(fake.versionId, [])
+    const inst = fakeInstance(fake.versionId, { id: 'inst-crash-session' })
+
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('no crash within 20s')), 20_000)
+      lm.on('crash', () => {
+        clearTimeout(timer)
+        resolve()
+      })
+      void lm.launch(inst, { javaOverride: java }).catch(reject)
+    })
+
+    const logsSvc = new LogsService()
+    let sessions = await logsSvc.sessions(inst.id)
+    for (let i = 0; i < 50 && (sessions.length === 0 || !sessions[0].crashed); i++) {
+      await new Promise((r) => setTimeout(r, 100))
+      sessions = await logsSvc.sessions(inst.id)
+    }
+    expect(sessions).toHaveLength(1)
+    expect(sessions[0].crashed).toBe(true)
+    expect(sessions[0].file).toMatch(/\.crash\.log$/)
   })
 
   it('detects crashes, captures the report, and emits a crash event', async () => {
