@@ -1,0 +1,12 @@
+version: 3.1.0
+files:
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.1.0/Native-3.1.0-arm64.AppImage
+    sha512: e4BeTtxflYosv0ddde9ve2y1/hL2Oc6MFU6dDrTMildYY8AgPOP7M/ODrFQbfGEihlilnA/AYFcUSOgImHBeAw==
+    size: 106818491
+    blockMapSize: 112391
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.1.0/Native-3.1.0-arm64.deb
+    sha512: i3J3Hu0bxTxOmcglu3iFrysRtVkE/B/Af0t/JHwJE9Bn1PCP1zrKFhGbTU0xT/nEz4/MNgwzV3Izf4ltgLQF+Q==
+    size: 69414662
+path: Native-3.1.0-arm64.AppImage
+sha512: e4BeTtxflYosv0ddde9ve2y1/hL2Oc6MFU6dDrTMildYY8AgPOP7M/ODrFQbfGEihlilnA/AYFcUSOgImHBeAw==
+releaseDate: '2026-07-21T08:35:13.205Z'

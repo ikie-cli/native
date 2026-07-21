@@ -1,0 +1,14 @@
+version: 3.1.0
+files:
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.1.0/Native-Setup-3.1.0.exe
+    sha512: lIeVkDmNQk/MAO2hlx93RxZY0lHrFwScTei33vIfiAT2M8QE52DgQel7mu4jdX/ZH17xAfKC8Wxv6RX1T4eu1g==
+    size: 166009970
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.1.0/Native-Setup-3.1.0-x64.exe
+    sha512: lDoMS4FOwjtnY0Cf/5E+HY9TE1ooLnglRdF43tD8YFJoPKHd3t/A+ZBvgsqDrBaFmhD5v5iEvaL3jgpkx1eIaw==
+    size: 80276736
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.1.0/Native-Setup-3.1.0-arm64.exe
+    sha512: NUYhXX2tgk/mpLbmK86LHvOPbyqpEQmPOPMYgxdD1ojeu/NW2burT6JIwYjyImEU3J4lSfJTKS0kTU1sQzARug==
+    size: 86306449
+path: Native-Setup-3.1.0.exe
+sha512: lIeVkDmNQk/MAO2hlx93RxZY0lHrFwScTei33vIfiAT2M8QE52DgQel7mu4jdX/ZH17xAfKC8Wxv6RX1T4eu1g==
+releaseDate: '2026-07-21T08:36:01.250Z'
