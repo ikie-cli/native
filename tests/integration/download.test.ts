@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DownloadTask } from '../../src/main/core/download'
 import { makeBlob, startFixtureServer, type Fixture } from './helpers/fixture-server'
 import { createHash } from 'node:crypto'
@@ -150,14 +150,15 @@ describe('DownloadTask', () => {
 
   it('cancel() aborts in-flight work and marks the task cancelled', async () => {
     const blob = makeBlob(512 * 1024)
-    const meta = fx.add('/slow.bin', blob)
+    const meta = fx.add('/slow.bin', blob, { responseDelayMs: 100 })
     const t = task()
     const run = t.run(
       [{ url: `${fx.baseUrl}/slow.bin`, dest: join(dir, 'slow.bin'), size: meta.size, sha1: meta.sha1 }],
       1
     )
-    // Cancel almost immediately.
-    setTimeout(() => t.cancel(), 5)
+    // Wait until fetch is genuinely in flight, then cancel deterministically.
+    await vi.waitFor(() => expect(fx.requests.some((r) => r.path === '/slow.bin')).toBe(true))
+    t.cancel()
     await expect(run).rejects.toThrow()
     t.fail(new Error('cancelled'))
     expect(t.progress().state).toBe('cancelled')

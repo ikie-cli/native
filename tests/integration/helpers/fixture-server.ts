@@ -11,6 +11,8 @@ export interface FixtureFile {
   ignoreRange?: boolean
   /** drop the connection after N bytes (once), to exercise resume */
   truncateOnceAt?: number
+  /** hold the response open so cancellation tests cannot win by downloading first */
+  responseDelayMs?: number
 }
 
 export interface Fixture {
@@ -72,7 +74,11 @@ export async function startFixtureServer(): Promise<Fixture> {
       })
       return
     }
-    res.end(body)
+    if (file.responseDelayMs) {
+      setTimeout(() => res.end(body), file.responseDelayMs)
+    } else {
+      res.end(body)
+    }
   })
 
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
