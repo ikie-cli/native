@@ -135,19 +135,23 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Configure optional code signing
+        env:
+          TARGET_PLATFORM: ${{ matrix.platform }}
+          WIN_CERTIFICATE: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CERTIFICATE_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          MAC_CERTIFICATE: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: node scripts/configure-signing-env.mjs
       - name: Build ${{ matrix.platform }} package
         run: >-
           npx electron-vite build && npx electron-builder
           --${{ matrix.platform }} --${{ matrix.arch }} --publish never
           -c.publish.channel=${{ contains(github.ref_name, '-nightly.') && 'nightly' || contains(github.ref_name, '-beta.') && 'beta' || 'latest' }}
           ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK != '' && '-c.mac.notarize=true' || '' }}
-        env:
-          CSC_LINK: ${{ matrix.platform == 'windows' && secrets.WIN_CSC_LINK || matrix.platform == 'mac' && secrets.MAC_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.platform == 'windows' && secrets.WIN_CSC_KEY_PASSWORD || matrix.platform == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ (matrix.platform == 'windows' && secrets.WIN_CSC_LINK != '') || (matrix.platform == 'mac' && secrets.MAC_CSC_LINK != '') }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - uses: actions/upload-artifact@v6
         with:
           name: packages-${{ matrix.platform }}-${{ matrix.arch }}
