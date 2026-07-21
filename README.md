@@ -120,4 +120,16 @@ and log lines batch at ~15 Hz into a virtualized console.
 
 ## License
 
-MIT
+Native is released under the [MIT License](LICENSE).
+
+## Code signing
+
+Windows builds are signed through the [SignPath Foundation](https://signpath.org/)
+free code-signing program for open-source projects. Note that the publisher shown
+in Windows SmartScreen/UAC is **SignPath Foundation**, not Native Labs — the
+certificate is issued to the Foundation and verified against this repository.
+
+> Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org/)
+
+macOS builds remain unsigned until Apple Developer signing is configured (SignPath
+covers Windows only).
