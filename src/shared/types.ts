@@ -379,7 +379,16 @@ export type UpdaterState =
   | { status: 'checking' }
   | { status: 'available'; version: string; notes: string; size: number }
   | { status: 'downloading'; version: string; notes: string; size: number; progress: UpdateProgress }
-  | { status: 'ready'; version: string; notes: string; size: number }
+  | {
+      status: 'ready'
+      version: string
+      notes: string
+      size: number
+      /** How the update was fetched: 'delta' (small patch) or 'full'. Null if unknown. */
+      deltaMode?: 'delta' | 'full' | null
+      /** When 'full', the reason a differential download wasn't possible. */
+      deltaReason?: string | null
+    }
   | { status: 'error'; error: string }
   | { status: 'unsupported'; reason: string }
 

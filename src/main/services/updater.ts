@@ -1,7 +1,39 @@
 import { EventEmitter } from 'node:events'
 import { app } from 'electron'
+import type { Logger } from 'electron-updater'
 import type { UpdaterState } from '@shared/types'
 import { log } from '../logger'
+
+/**
+ * Wraps our logger so we can observe electron-updater's internal delta decision.
+ * electron-updater emits everything through the logger we hand it; the
+ * differential downloader logs a distinctive line when it falls back to a full
+ * download ("Cannot download differentially, fallback to full download: …") and
+ * an info line ("Download block maps …") only while attempting a delta. Watching
+ * those two lets us report *why* an update was full instead of a small delta.
+ *
+ * electron-updater only needs { info, warn, error, debug } (see its Logger type),
+ * so a plain forwarding object is safer than cloning electron-log's prototype.
+ */
+function makeUpdaterLogger(onDelta: (mode: 'delta' | 'full', reason?: string) => void): Logger {
+  const forward =
+    (level: 'info' | 'warn' | 'error' | 'debug') =>
+    (message?: unknown): void => {
+      const msg = typeof message === 'string' ? message : String(message)
+      if (msg.includes('Cannot download differentially')) {
+        onDelta('full', msg.split('fallback to full download:').pop()?.trim() || 'unknown')
+      } else if (msg.includes('Download block maps')) {
+        onDelta('delta')
+      }
+      log[level](message)
+    }
+  return {
+    info: forward('info'),
+    warn: forward('warn'),
+    error: forward('error'),
+    debug: forward('debug')
+  }
+}
 
 /**
  * electron-updater integration against the public GitHub release feed.
@@ -18,6 +50,9 @@ export class UpdaterService extends EventEmitter {
   private timer: ReturnType<typeof setInterval> | null = null
   private autoDownload = true
   private updater: typeof import('electron-updater').autoUpdater | null = null
+  /** How the in-flight download is being fetched, for diagnostics + UI. */
+  private deltaMode: 'delta' | 'full' | null = null
+  private deltaReason: string | null = null
 
   async init(opts: {
     autoCheck: boolean
@@ -44,7 +79,15 @@ export class UpdaterService extends EventEmitter {
         mod.autoUpdater ??
         (mod as unknown as { default: { autoUpdater: typeof mod.autoUpdater } }).default.autoUpdater
       this.updater = autoUpdater
-      autoUpdater.logger = log
+      autoUpdater.logger = makeUpdaterLogger((mode, reason) => {
+        this.deltaMode = mode
+        this.deltaReason = reason ?? null
+        if (mode === 'full') {
+          log.info(`[updater] differential download unavailable — full download (${reason})`)
+        } else {
+          log.info('[updater] attempting differential (delta) download')
+        }
+      })
       autoUpdater.autoDownload = false // we orchestrate explicitly
       autoUpdater.autoInstallOnAppQuit = true
       this.setChannel(opts.channel)
@@ -88,7 +131,14 @@ export class UpdaterService extends EventEmitter {
       autoUpdater.on('update-downloaded', (info) => {
         const notes = releaseNotes(info.releaseNotes)
         const size = info.files.reduce((total, file) => total + (file.size ?? 0), 0)
-        this.setState({ status: 'ready', version: info.version, notes, size })
+        this.setState({
+          status: 'ready',
+          version: info.version,
+          notes,
+          size,
+          deltaMode: this.deltaMode,
+          deltaReason: this.deltaReason
+        })
       })
       autoUpdater.on('error', (err) => {
         log.warn(`[updater] ${err.message}`)
@@ -122,6 +172,10 @@ export class UpdaterService extends EventEmitter {
   async download(): Promise<void> {
     if (!this.updater) return
     if (this.state.status !== 'available') return
+    // Reset delta diagnostics; the logger hook repopulates them as the download
+    // negotiates differential vs full.
+    this.deltaMode = null
+    this.deltaReason = null
     try {
       await withRetries(() => this.updater!.downloadUpdate(), 3)
     } catch (err) {
