@@ -3,426 +3,816 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Native — a fast, beautiful Minecraft launcher</title>
-  <meta name="description" content="Native is a fast, beautiful Minecraft launcher for Windows and Linux. Instances, one-click Fabric/Quilt/Forge/NeoForge, Modrinth search, servers, worlds, and auto-updates — in a pure black &amp; white design." />
-  <meta property="og:title" content="Native — a fast, beautiful Minecraft launcher" />
-  <meta property="og:description" content="Instances, one-click mod loaders, Modrinth search, servers, worlds, auto-updates. Windows &amp; Linux." />
+  <title>Native — the Minecraft launcher that feels native</title>
+  <meta name="description" content="Native is a fast, beautiful Minecraft launcher for Windows and Linux. Instances, one-click Fabric, Quilt, Forge and NeoForge, built-in content search, servers, worlds and automatic updates." />
+  <meta property="og:title" content="Native — the Minecraft launcher that feels native" />
+  <meta property="og:description" content="Instances, one-click mod loaders, built-in content search, servers, worlds and automatic updates. Free for Windows and Linux." />
   <meta property="og:image" content="assets/shot-home.png" />
-  <link rel="icon" type="image/png" href="assets/favicon-mono.png" />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/icon-256.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
-    /* ---- Mono tokens (mirrors the app's design system) ---- */
+    /* =========================================================
+     * Native — v5. Launcher palette (classic OLED + #1bd96a),
+     * editorial layout: split hero, marquee, bento, deep dives,
+     * green stat band. Icons: Lucide 0.469 (same as the app).
+     * ========================================================= */
     :root {
       --bg: #000000;
-      --base: #050505;
-      --raised: #121212;
-      --inset: #0a0a0a;
-      --input: #1c1c1c;
-      --hover: #181818;
-      --active: #262626;
+      --raised: #111317;
+      --inset: #0a0c0e;
+      --input: #1d2025;
+      --hover: #16191d;
+      --active: #24272c;
       --text: #ffffff;
-      --text-2: #a3a3a3;
-      --text-3: #666666;
-      --line: rgba(255, 255, 255, 0.08);
-      --line-strong: rgba(255, 255, 255, 0.18);
-      --accent: #ffffff;
-      --accent-contrast: #000000;
+      --text-2: #9ba1ac;
+      --text-3: #6e7580;
+      --line: rgba(255, 255, 255, 0.07);
+      --line-strong: rgba(255, 255, 255, 0.15);
+      --green: #1bd96a;
+      --green-hover: #35e57f;
+      --green-deep: #12b859;
+      --green-ink: #03150a;
+      --green-tint: rgba(27, 217, 106, 0.1);
       --ease: cubic-bezier(0.25, 1, 0.5, 1);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg); color: var(--text);
       font-family: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      line-height: 1.6;
-      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased; line-height: 1.6; overflow-x: hidden;
     }
-    ::selection { background: var(--text); color: var(--bg); }
-    a { color: inherit; }
+    ::selection { background: var(--green); color: var(--green-ink); }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; }
+    button { font-family: inherit; border: none; background: none; color: inherit; cursor: pointer; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+    section { scroll-margin-top: 84px; }
+    svg.lucide { display: block; }
 
-    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+    ::-webkit-scrollbar { width: 9px; }
+    ::-webkit-scrollbar-thumb { background: #3c3f46; border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4a4e56; }
+    ::-webkit-scrollbar-track { background: transparent; }
 
-    /* ---- Header ---- */
+    .progress { position: fixed; top: 0; left: 0; z-index: 90; height: 2px; width: 0; background: var(--green); box-shadow: 0 0 12px rgba(27,217,106,.6); }
+
+    /* ============================ Nav ============================ */
     header {
-      position: sticky; top: 0; z-index: 50;
-      backdrop-filter: blur(14px);
-      background: rgba(0, 0, 0, 0.72);
-      border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 70;
+      backdrop-filter: blur(18px);
+      background: rgba(0, 0, 0, 0.7);
+      border-bottom: 1px solid transparent;
+      transition: border-color 200ms;
     }
-    .nav {
-      display: flex; align-items: center; gap: 28px;
-      height: 60px;
+    header.scrolled { border-color: var(--line); }
+    .nav { display: flex; align-items: center; gap: 30px; height: 70px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
+    .brand img { width: 30px; height: 30px; border-radius: 8px; }
+    .nav-links { display: flex; gap: 4px; margin-left: auto; }
+    .nav-links a {
+      color: var(--text-2); font-size: 14px; font-weight: 600;
+      padding: 8px 14px; border-radius: 999px;
+      transition: color 140ms, background 140ms;
     }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -0.02em; text-decoration: none; }
-    .brand img { width: 26px; height: 26px; border-radius: 7px; }
-    .nav-links { display: flex; gap: 22px; margin-left: auto; }
-    .nav-links a { color: var(--text-2); text-decoration: none; font-size: 14px; font-weight: 600; transition: color 140ms; }
-    .nav-links a:hover { color: var(--text); }
-    .nav .cta { margin-left: 8px; }
+    .nav-links a:hover { color: var(--text); background: var(--hover); }
+    .nav-links a.active { color: var(--text); background: var(--input); }
+    @media (max-width: 720px) { .nav-links { display: none; } .nav .btn { margin-left: auto; } }
 
-    /* ---- Buttons ---- */
+    /* ============================ Buttons ============================ */
     .btn {
-      display: inline-flex; align-items: center; gap: 9px;
-      height: 44px; padding: 0 22px; border-radius: 999px;
-      font-size: 14.5px; font-weight: 700; text-decoration: none;
-      border: none; cursor: pointer;
-      transition: transform 140ms var(--ease), background 140ms, opacity 140ms;
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      height: 50px; padding: 0 26px; border-radius: 14px;
+      font-size: 15px; font-weight: 700; white-space: nowrap;
+      transition: transform 150ms var(--ease), background 150ms, border-color 150ms, box-shadow 150ms;
     }
+    .btn:hover { transform: translateY(-1px); }
     .btn:active { transform: scale(0.97); }
-    .btn-primary { background: var(--accent); color: var(--accent-contrast); }
-    .btn-primary:hover { background: #d9d9d9; }
-    .btn-ghost { background: var(--input); color: var(--text); }
-    .btn-ghost:hover { background: var(--active); }
-    .btn svg { flex-shrink: 0; }
-    .btn small { font-weight: 500; opacity: 0.65; margin-left: 2px; }
+    .btn .lucide { width: 17px; height: 17px; }
+    .btn-green { background: var(--green); color: var(--green-ink); box-shadow: 0 10px 34px -12px rgba(27,217,106,.5); }
+    .btn-green:hover { background: var(--green-hover); }
+    .btn-dark { background: var(--input); color: var(--text); }
+    .btn-dark:hover { background: var(--active); }
+    .btn-ink { background: var(--green-ink); color: #fff; }
+    .btn-ink:hover { background: #0a2a16; }
+    .btn-sm { height: 40px; padding: 0 18px; font-size: 13.5px; border-radius: 11px; }
 
-    /* ---- Hero ---- */
-    .hero { padding: 96px 0 40px; text-align: center; position: relative; }
-    .hero::before {
-      content: ''; position: absolute; inset: -200px 0 0;
-      background: radial-gradient(560px 380px at 50% 0%, rgba(255,255,255,0.07), transparent 70%);
-      pointer-events: none;
+    /* ============================ Hero — OLED pixel field + poster type ============================ */
+    .hero {
+      position: relative; overflow: clip;
+      min-height: calc(100svh - 70px);
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 48px 0 84px;
     }
-    .hero h1 {
-      font-size: clamp(40px, 7vw, 68px);
-      line-height: 1.04; font-weight: 800; letter-spacing: -0.035em;
+    #pixels { position: absolute; inset: 0; z-index: 0; }
+    .hero-inner { position: relative; z-index: 1; width: 100%; pointer-events: none; }
+    .hero-inner a, .hero-inner .actions { pointer-events: auto; }
+    .hero h1 { margin-top: 0; }
+    .hero h1 .lrow { display: block; overflow: hidden; }
+    .hero h1 .l {
+      display: block;
+      font-size: clamp(52px, 9.2vw, 128px);
+      font-weight: 900; letter-spacing: -0.045em; line-height: 0.95;
+      text-transform: uppercase;
+      transform: translateY(110%);
+      animation: lrise 900ms var(--ease) forwards; animation-delay: var(--d, 0ms);
     }
-    .hero h1 .dim { color: var(--text-3); }
-    .hero p.lede {
-      margin: 22px auto 0; max-width: 560px;
-      color: var(--text-2); font-size: 18px;
+    @keyframes lrise { to { transform: none; } }
+    .l.outline { color: transparent; -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.75); }
+    @supports not (-webkit-text-stroke: 1px #fff) { .l.outline { color: var(--text-2); } }
+    .l.solid { color: var(--text); }
+    .l.greenline {
+      background: linear-gradient(92deg, var(--green) 20%, #8bf7b7 50%, var(--green) 80%);
+      background-size: 200% 100%;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: lrise 900ms var(--ease) forwards, sheen 6s linear 1.4s infinite;
     }
-    .hero .actions { margin-top: 34px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .hero .meta { margin-top: 16px; color: var(--text-3); font-size: 13px; }
-    .hero .meta a { color: var(--text-2); }
+    @keyframes sheen { to { background-position: 200% 0; } }
+    .hero-bottom { margin-top: 44px; display: flex; align-items: center; gap: 34px; flex-wrap: wrap; }
+    .hero .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hero .checks { display: flex; gap: 18px; flex-wrap: wrap; color: var(--text-3); font-size: 13.5px; font-weight: 600; }
+    .hero .checks span { display: inline-flex; align-items: center; gap: 7px; }
+    .hero .checks .lucide { width: 15px; height: 15px; color: var(--green); }
+    .scrollhint {
+      position: absolute; left: 50%; bottom: 22px; translate: -50% 0; z-index: 1;
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text-3); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      animation: hint 2.4s ease-in-out infinite;
+    }
+    .scrollhint .lucide { width: 16px; height: 16px; }
+    @keyframes hint { 0%, 100% { transform: translateY(0); opacity: .7; } 50% { transform: translateY(6px); opacity: 1; } }
+    @keyframes ping { 0% { transform: scale(1); opacity: .6; } 80%, 100% { transform: scale(2.6); opacity: 0; } }
 
-    /* ---- App frame screenshot ---- */
-    .frame {
-      margin: 56px auto 0; max-width: 980px;
-      border: 1px solid var(--line-strong);
-      border-radius: 14px; overflow: hidden;
-      box-shadow: 0 40px 120px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.03);
-      background: var(--raised);
+    /* Scroll-driven product reveal (Apple-style rise + flatten) */
+    .reveal-stage { position: relative; padding: 8px 0 30px; perspective: 1300px; }
+    .frame3 {
+      border-radius: 20px; overflow: hidden;
+      border: 1px solid var(--line-strong); background: var(--inset);
+      box-shadow: 0 70px 160px -40px rgba(0,0,0,.9), 0 40px 90px -35px rgba(27,217,106,.22);
+      will-change: transform, opacity;
+      transform-origin: 50% 100%;
     }
-    .frame img { display: block; width: 100%; height: auto; }
+    .frame3 img { width: 100%; height: auto; }
+    .float {
+      position: absolute; z-index: 2;
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(17, 19, 23, 0.9); backdrop-filter: blur(10px);
+      border: 1px solid var(--line-strong); border-radius: 14px;
+      padding: 10px 14px; font-size: 13px; font-weight: 700;
+      box-shadow: 0 18px 44px -12px rgba(0,0,0,.8);
+      animation: bob 5.5s ease-in-out infinite;
+    }
+    .float .lucide { width: 16px; height: 16px; color: var(--green); }
+    .float small { display: block; font-weight: 500; color: var(--text-3); font-size: 11.5px; }
+    .float.f1 { top: 10%; left: 2px; animation-delay: .6s; }
+    .float.f2 { bottom: 12%; right: 2px; }
+    @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
 
-    /* ---- Sections ---- */
-    section { padding: 88px 0; }
+    /* ============================ Marquee ============================ */
+    .marquee {
+      border-block: 1px solid var(--line); padding: 18px 0; overflow: hidden;
+      mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+    }
+    .mtrack { display: flex; gap: 12px; width: max-content; animation: marq 30s linear infinite; }
+    .marquee:hover .mtrack { animation-play-state: paused; }
+    @keyframes marq { to { transform: translateX(-50%); } }
+    .mchip {
+      display: inline-flex; align-items: center; gap: 9px;
+      height: 42px; padding: 0 20px; border-radius: 999px;
+      background: var(--raised); border: 1px solid var(--line);
+      color: var(--text-2); font-size: 13.5px; font-weight: 600; white-space: nowrap;
+    }
+    .mchip svg { width: 17px; height: 17px; }
+    .mchip .lucide { color: var(--green); }
+
+    /* ============================ Section headings ============================ */
+    .section { padding: 104px 0; }
     .kicker {
-      display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--text-3); margin-bottom: 14px;
-    }
-    h2 { font-size: clamp(28px, 4.5vw, 40px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.12; }
-    .sub { color: var(--text-2); margin-top: 12px; max-width: 620px; font-size: 16.5px; }
-
-    /* ---- Feature grid ---- */
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 44px; }
-    @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
-    .card {
-      background: var(--raised); border: 1px solid var(--line);
-      border-radius: 16px; padding: 24px;
-      transition: border-color 180ms, transform 180ms var(--ease);
-    }
-    .card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
-    .card .ic {
-      width: 40px; height: 40px; border-radius: 999px;
-      background: var(--input); display: flex; align-items: center; justify-content: center;
-      margin-bottom: 16px;
-    }
-    .card h3 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
-    .card p { color: var(--text-2); font-size: 14px; margin-top: 7px; }
-
-    /* ---- Screens showcase ---- */
-    .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 44px; }
-    @media (max-width: 720px) { .shots { grid-template-columns: 1fr; } }
-    .shot {
-      border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-      background: var(--raised); transition: border-color 180ms;
-    }
-    .shot:hover { border-color: var(--line-strong); }
-    .shot img { display: block; width: 100%; height: auto; }
-    .shot figcaption { padding: 13px 18px; font-size: 13.5px; color: var(--text-2); border-top: 1px solid var(--line); }
-
-    /* ---- Loaders strip ---- */
-    .loaders { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 36px; }
-    .loader-pill {
       display: inline-flex; align-items: center; gap: 10px;
-      height: 44px; padding: 0 20px; border-radius: 999px;
-      background: var(--raised); border: 1px solid var(--line);
-      font-size: 14.5px; font-weight: 600; color: var(--text-2);
-      transition: color 140ms, border-color 140ms;
+      font-size: 12.5px; font-weight: 800; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--green); margin-bottom: 16px;
     }
-    .loader-pill:hover { color: var(--text); border-color: var(--line-strong); }
-    .loader-pill svg { width: 19px; height: 19px; }
+    .kicker::before { content: ''; width: 24px; height: 2px; border-radius: 2px; background: var(--green); }
+    h2 { font-size: clamp(32px, 4.6vw, 50px); font-weight: 900; letter-spacing: -0.04em; line-height: 1.06; }
+    .sub { color: var(--text-2); margin-top: 14px; max-width: 620px; font-size: 17px; }
 
-    /* ---- Download section ---- */
-    .dl { text-align: center; border-top: 1px solid var(--line); }
-    .dl-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 44px; }
-    @media (max-width: 760px) { .dl-cards { grid-template-columns: 1fr; } }
-    .dl-card {
-      background: var(--raised); border: 1px solid var(--line);
-      border-radius: 16px; padding: 30px 24px; text-align: center;
-      transition: border-color 180ms, transform 180ms var(--ease);
+    /* ============================ Bento ============================ */
+    .bento {
+      display: grid; gap: 14px; margin-top: 52px;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-areas:
+        "lib lib dl"
+        "lib lib srv"
+        "load load skin";
     }
-    .dl-card:hover { border-color: var(--line-strong); transform: translateY(-2px); }
-    .dl-card .os { font-size: 30px; margin-bottom: 8px; display: flex; justify-content: center; }
-    .dl-card h3 { font-size: 17px; font-weight: 700; }
-    .dl-card p { color: var(--text-3); font-size: 13px; margin: 6px 0 18px; }
-    .dl-card .btn { width: 100%; justify-content: center; }
-    .dl-card.soon { opacity: 0.55; }
-    .dl-card.soon .btn { pointer-events: none; background: var(--input); color: var(--text-3); }
+    @media (max-width: 900px) {
+      .bento { grid-template-columns: 1fr 1fr; grid-template-areas: "lib lib" "dl srv" "load load" "skin skin"; }
+    }
+    @media (max-width: 560px) {
+      .bento { grid-template-columns: 1fr; grid-template-areas: "lib" "dl" "srv" "load" "skin"; }
+    }
+    .cell {
+      position: relative; overflow: hidden;
+      background: var(--raised); border: 1px solid var(--line); border-radius: 20px;
+      padding: 24px;
+      transition: transform 220ms var(--ease), border-color 220ms;
+    }
+    .cell::before {
+      content: ''; position: absolute; inset: 0; opacity: 0; pointer-events: none;
+      background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 0%), rgba(27,217,106,.08), transparent 65%);
+      transition: opacity 300ms;
+    }
+    .cell:hover { transform: translateY(-4px); border-color: var(--line-strong); }
+    .cell:hover::before { opacity: 1; }
+    .cell h3 { font-size: 16.5px; font-weight: 800; letter-spacing: -0.01em; position: relative; }
+    .cell p { color: var(--text-2); font-size: 13.5px; margin-top: 6px; position: relative; }
+    .cell .top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; position: relative; }
+    .cell .top .lucide { width: 18px; height: 18px; color: var(--green); }
 
-    /* ---- Footer ---- */
-    footer { border-top: 1px solid var(--line); padding: 44px 0 60px; color: var(--text-3); font-size: 13.5px; }
+    .cell-lib { grid-area: lib; padding: 0; display: flex; flex-direction: column; }
+    .cell-lib .txt { padding: 24px 24px 18px; }
+    .cell-lib .pic { position: relative; flex: 1; min-height: 260px; overflow: hidden; }
+    .cell-lib .pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; transition: transform 700ms var(--ease); }
+    .cell-lib:hover .pic img { transform: scale(1.03); }
+    .cell-lib .pic::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(17,19,23,.6), transparent 30%); }
+
+    .cell-dl { grid-area: dl; }
+    .mockrow { position: relative; margin-top: 16px; font-size: 12.5px; color: var(--text-3); display: flex; justify-content: space-between; font-weight: 600; }
+    .mockbar { position: relative; margin-top: 8px; height: 8px; border-radius: 999px; background: var(--input); overflow: hidden; }
+    .mockbar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 999px; background: var(--green); animation: load 3s var(--ease) infinite; }
+    @keyframes load { 0% { width: 4%; opacity: 1; } 75% { width: 97%; opacity: 1; } 92% { width: 97%; opacity: 0; } 100% { width: 4%; opacity: 0; } }
+
+    .cell-srv { grid-area: srv; }
+    .srvrow { position: relative; margin-top: 14px; display: flex; align-items: center; gap: 10px; background: var(--inset); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 700; }
+    .srvrow .dot { position: relative; width: 8px; height: 8px; }
+    .srvrow .dot::before { content: ''; position: absolute; inset: 0; border-radius: 999px; background: var(--green); opacity: .5; animation: ping 2s ease-out infinite; }
+    .srvrow .dot::after { content: ''; position: absolute; inset: 0; border-radius: 999px; background: var(--green); }
+    .srvrow .ms { margin-left: auto; color: var(--green); font-variant-numeric: tabular-nums; }
+
+    .cell-load { grid-area: load; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .loadmarks { display: flex; gap: 8px; flex-wrap: wrap; position: relative; }
+    .lmark {
+      display: inline-flex; align-items: center; gap: 8px;
+      height: 38px; padding: 0 16px; border-radius: 999px;
+      background: var(--input); color: var(--text-2); font-size: 13px; font-weight: 700;
+      transition: color 140ms, background 140ms, transform 150ms var(--ease);
+    }
+    .lmark:hover { color: var(--text); background: var(--active); transform: translateY(-2px); }
+    .lmark svg { width: 16px; height: 16px; }
+
+    .cell-skin { grid-area: skin; display: flex; align-items: center; gap: 16px; }
+    .cell-skin img { width: 52px; height: 52px; border-radius: 10px; image-rendering: pixelated; flex-shrink: 0; }
+
+    /* ============================ Deep dives ============================ */
+    .dive { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; margin-top: 84px; }
+    @media (max-width: 900px) { .dive { grid-template-columns: 1fr; gap: 32px; } .dive.flip .dcopy { order: -1; } }
+    .dive .dpic { border-radius: 18px; overflow: hidden; border: 1px solid var(--line-strong); background: var(--inset); box-shadow: 0 50px 120px -40px rgba(0,0,0,.9); }
+    .dive .dpic img { width: 100%; height: auto; }
+    .dive h3 { font-size: clamp(26px, 3vw, 34px); font-weight: 900; letter-spacing: -0.03em; line-height: 1.12; }
+    .dive p { margin-top: 14px; color: var(--text-2); font-size: 16px; max-width: 460px; }
+    .dive ul { margin-top: 20px; display: flex; flex-direction: column; gap: 11px; list-style: none; }
+    .dive li { display: flex; align-items: flex-start; gap: 10px; color: var(--text-2); font-size: 14.5px; font-weight: 500; }
+    .dive li .lucide { width: 17px; height: 17px; color: var(--green); flex-shrink: 0; margin-top: 2px; }
+
+    /* ============================ Green band ============================ */
+    .band { background: var(--green); color: var(--green-ink); padding: 92px 0; }
+    .band h2 { color: var(--green-ink); }
+    .band .sub { color: rgba(3, 21, 10, 0.72); }
+    .band-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
+    @media (max-width: 880px) { .band-grid { grid-template-columns: 1fr; } }
+    .band-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 560px) { .band-stats { grid-template-columns: 1fr; } }
+    .bstat { background: rgba(3, 21, 10, 0.1); border: 1px solid rgba(3, 21, 10, 0.16); border-radius: 18px; padding: 24px 18px; text-align: center; }
+    .bstat .num { font-size: 38px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+    .bstat .lbl { margin-top: 6px; font-size: 13px; font-weight: 700; color: rgba(3, 21, 10, 0.7); }
+    .band .actions { margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+    /* ============================ Download panel ============================ */
+    .dlpanel {
+      margin-top: 52px; background: var(--raised); border: 1px solid var(--line);
+      border-radius: 24px; overflow: hidden;
+      display: grid; grid-template-columns: repeat(3, 1fr);
+    }
+    @media (max-width: 860px) { .dlpanel { grid-template-columns: 1fr; } }
+    .dlcol { padding: 40px 32px; text-align: center; position: relative; }
+    .dlcol + .dlcol { border-left: 1px solid var(--line); }
+    @media (max-width: 860px) { .dlcol + .dlcol { border-left: 0; border-top: 1px solid var(--line); } }
+    .dlcol.primary { background: linear-gradient(180deg, rgba(27,217,106,.07), transparent 70%); }
+    .dlcol .rec {
+      position: absolute; top: 14px; right: 14px;
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 26px; padding: 0 11px; border-radius: 999px;
+      background: var(--green-tint); color: var(--green);
+      font-size: 11.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+    }
+    .dlcol .os { display: flex; justify-content: center; margin-bottom: 14px; color: var(--text); }
+    .dlcol h3 { font-size: 18px; font-weight: 800; }
+    .dlcol .req { color: var(--text-3); font-size: 13px; margin: 6px 0 20px; }
+    .dlcol .btn { width: 100%; }
+    .dlcol .alt { margin-top: 13px; font-size: 13px; color: var(--text-3); }
+    .dlcol .alt a { color: var(--text-2); font-weight: 600; }
+    .dlcol .alt a:hover { color: var(--text); }
+    .dlcol.soon { opacity: .55; }
+    .dlcol.soon .btn { pointer-events: none; background: var(--inset); color: var(--text-3); border: 1px solid var(--line); }
+    .fineprint { margin-top: 26px; text-align: center; color: var(--text-3); font-size: 13px; }
+
+    /* ============================ FAQ ============================ */
+    .faqgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 48px; align-items: start; }
+    @media (max-width: 760px) { .faqgrid { grid-template-columns: 1fr; } }
+    .faq-item { background: var(--raised); border: 1px solid var(--line); border-radius: 16px; padding: 0 22px; transition: border-color 150ms; }
+    .faq-item:hover { border-color: var(--line-strong); }
+    .faq-q { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 19px 0; font-weight: 700; font-size: 15px; text-align: left; }
+    .faq-q .lucide { width: 18px; height: 18px; color: var(--green); flex-shrink: 0; transition: transform 260ms var(--ease); }
+    .faq-item.open .faq-q .lucide { transform: rotate(180deg); }
+    .faq-a { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 320ms var(--ease); }
+    .faq-item.open .faq-a { grid-template-rows: 1fr; }
+    .faq-a > div { overflow: hidden; }
+    .faq-a p { color: var(--text-2); font-size: 14px; padding-bottom: 20px; }
+
+    /* ============================ Watermark + footer ============================ */
+    .endcap { position: relative; text-align: center; padding: 30px 0 0; overflow: hidden; }
+    .watermark {
+      font-size: clamp(120px, 22vw, 320px); font-weight: 900; letter-spacing: -0.05em; line-height: 0.78;
+      background: linear-gradient(180deg, rgba(255,255,255,0.07), transparent 82%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      user-select: none; pointer-events: none;
+      transform: translateY(18%);
+    }
+    footer { position: relative; border-top: 1px solid var(--line); padding: 44px 0 56px; color: var(--text-3); font-size: 13.5px; background: var(--bg); }
     .foot { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
-    .foot .brand { font-size: 15px; }
-    .foot .links { margin-left: auto; display: flex; gap: 18px; }
-    .foot a { color: var(--text-3); text-decoration: none; }
-    .foot a:hover { color: var(--text-2); }
-    .disclaimer { margin-top: 18px; max-width: 640px; }
+    .foot .brand { font-size: 16px; }
+    .foot .brand img { width: 26px; height: 26px; }
+    .foot .links { margin-left: auto; display: flex; gap: 22px; }
+    .foot a { color: var(--text-2); font-weight: 600; }
+    .foot a:hover { color: var(--text); }
+    .disclaimer { margin-top: 20px; max-width: 700px; line-height: 1.7; }
 
-    /* ---- Reveal on scroll ---- */
-    .reveal { opacity: 0; transform: translateY(18px); transition: opacity 600ms var(--ease), transform 600ms var(--ease); }
-    .reveal.in { opacity: 1; transform: none; }
+    /* ============================ Reveal system ============================ */
+    .reveal, .reveal-l, .reveal-r { opacity: 0; transition: opacity 700ms var(--ease), transform 700ms var(--ease); transition-delay: var(--d, 0ms); }
+    .reveal { transform: translateY(26px); }
+    .reveal-l { transform: translateX(-34px); }
+    .reveal-r { transform: translateX(34px); }
+    .reveal.in, .reveal-l.in, .reveal-r.in { opacity: 1; transform: none; }
     @media (prefers-reduced-motion: reduce) {
-      .reveal { opacity: 1; transform: none; transition: none; }
       html { scroll-behavior: auto; }
+      .reveal, .reveal-l, .reveal-r { opacity: 1; transform: none; transition: none; }
+      .mtrack, .float, .mockbar i, .badge .pulse::before, .srvrow .dot::before { animation: none; }
+      .shot3d { transform: none; }
     }
   </style>
 </head>
 <body>
 
-<header>
+<div class="progress" id="progress"></div>
+
+<header id="top">
   <div class="wrap nav">
     <a class="brand" href="#">
-      <img src="assets/favicon-mono.png" alt="" width="26" height="26" />
+      <img src="assets/favicon.png" alt="" width="30" height="30" />
       Native
     </a>
-    <nav class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#screens">Screens</a>
-      <a href="#download">Download</a>
-      <a href="https://github.com/native-launcher/native">GitHub</a>
+    <nav class="nav-links" id="nav-links" aria-label="Main">
+      <a href="#features" data-spy="features">Features</a>
+      <a href="#dives" data-spy="dives">Tour</a>
+      <a href="#download" data-spy="download">Download</a>
+      <a href="#faq" data-spy="faq">FAQ</a>
     </nav>
-    <a class="btn btn-primary cta" style="height:38px;padding:0 18px;font-size:13.5px" href="#download">Download</a>
+    <a class="btn btn-green btn-sm" href="#download"><i data-lucide="download"></i>Get Native</a>
   </div>
 </header>
 
 <main>
-  <!-- ======= Hero ======= -->
-  <div class="hero wrap">
-    <h1>The Minecraft launcher,<br /><span class="dim">in black &amp; white.</span></h1>
-    <p class="lede">
-      Native is a fast, focused launcher for Windows and Linux. Instances, one-click mod
-      loaders, Modrinth search, servers, worlds — with sign-in that just works.
-    </p>
-    <div class="actions">
-      <a class="btn btn-primary" href="#download">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M4 19h16"/></svg>
-        Download for free
-      </a>
-      <a class="btn btn-ghost" href="https://github.com/native-launcher/native">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.3 9.4 7.86 10.92.58.1.8-.25.8-.56v-2.17c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A10.52 10.52 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
-        View source
-      </a>
+  <!-- ============================ Hero ============================ -->
+  <div class="hero" id="hero">
+    <canvas id="pixels" aria-hidden="true"></canvas>
+    <div class="wrap hero-inner">
+      <h1 aria-label="The launcher that feels native.">
+        <span class="lrow"><span class="l outline">The launcher</span></span>
+        <span class="lrow"><span class="l solid" style="--d:120ms">that feels</span></span>
+        <span class="lrow"><span class="l greenline" style="--d:240ms">native.</span></span>
+      </h1>
+      <div class="hero-bottom">
+        <div class="actions">
+          <a class="btn btn-green" href="downloads/Native-Setup-0.1.1.exe">
+            <i data-lucide="download"></i> Download for Windows
+          </a>
+          <a class="btn btn-dark" href="#download">All platforms</a>
+        </div>
+        <div class="checks">
+          <span><i data-lucide="check"></i> Free</span>
+          <span><i data-lucide="check"></i> No account required</span>
+          <span><i data-lucide="check"></i> Auto-updates</span>
+        </div>
+      </div>
     </div>
-    <p class="meta">v0.1.0 · free &amp; open source · auto-updates built in</p>
+    <div class="scrollhint" aria-hidden="true"><i data-lucide="chevrons-down"></i> scroll</div>
+  </div>
 
-    <figure class="frame reveal">
-      <img src="assets/shot-home.png" alt="Native home screen — instance list with play buttons and news" width="1366" height="768" />
+  <!-- Product reveal — rises and flattens in as you scroll -->
+  <div class="reveal-stage wrap" id="reveal-stage">
+    <div class="float f1">
+      <i data-lucide="gauge"></i>
+      <span>0.9s cold start<small>from click to playable</small></span>
+    </div>
+    <div class="float f2">
+      <i data-lucide="check-check"></i>
+      <span>Fabric installed<small>Java 21 matched automatically</small></span>
+    </div>
+    <figure class="frame3" id="frame3">
+      <img src="assets/shot-home.png" alt="Native home screen — instances with one-click play, live news and your player profile" width="1366" height="768" />
     </figure>
   </div>
 
-  <!-- ======= Features ======= -->
-  <section id="features">
+  <!-- ============================ Marquee ============================ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="mtrack" id="mtrack">
+      <!-- duplicated in JS for a seamless loop -->
+      <span class="mchip"><i data-lucide="layout-grid"></i> Unlimited instances</span>
+      <span class="mchip"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="23" d="m820 761-85.6-87.6c-4.6-4.7-10.4-9.6-25.9 1-19.9 13.6-8.4 21.9-5.2 25.4 8.2 9 84.1 89 97.2 104 2.5 2.8-20.3-22.5-6.5-39.7 5.4-7 18-12 26-3 6.5 7.3 10.7 18-3.4 29.7-24.7 20.4-102 82.4-127 103-12.5 10.3-28.5 2.3-35.8-6-7.5-8.9-30.6-34.6-51.3-58.2-5.5-6.3-4.1-19.6 2.3-25 35-30.3 91.9-73.8 111.9-90.8" transform="matrix(.08671 0 0 .0867 -49.8 -56)"/></svg> Fabric</span>
+      <span class="mchip"><i data-lucide="search"></i> Modrinth search built in</span>
+      <span class="mchip"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="2" d="M2 7.5h8v-2h12v2s-7 3.4-7 6 3.1 3.1 3.1 3.1l.9 3.9H5l1-4.1s3.8.1 4-2.9c.2-2.7-6.5-.7-8-6Z"/></svg> Forge</span>
+      <span class="mchip"><i data-lucide="refresh-cw"></i> Delta auto-updates</span>
+      <span class="mchip"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 -3.2 -3.2)"/><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 -3.2 7)"/><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 6.9 -3.2)"/><path stroke="currentColor" stroke-width="70.4" d="M442.5 234.8c0-7-5.6-12.5-12.5-12.5H234.7c-6.8 0-12.4 5.6-12.4 12.5V430c0 6.9 5.6 12.5 12.4 12.5H430c6.9 0 12.5-5.6 12.5-12.5V234.8Z" transform="rotate(45 3.5 24) scale(.02843 .02835)"/></svg> Quilt</span>
+      <span class="mchip"><i data-lucide="server"></i> Live server pings</span>
+      <span class="mchip"><i data-lucide="shield-check"></i> Checksum-verified downloads</span>
+      <span class="mchip"><i data-lucide="user-round"></i> Your skin, everywhere</span>
+      <span class="mchip"><i data-lucide="coffee"></i> Java 8 / 17 / 21 automatic</span>
+    </div>
+  </div>
+
+  <!-- ============================ Bento ============================ -->
+  <section id="features" class="section">
     <div class="wrap">
-      <span class="kicker reveal">Everything you need</span>
-      <h2 class="reveal">Nine features. Zero clutter.</h2>
-      <p class="sub reveal">Every capability of a heavyweight launcher, wrapped in an interface that stays out of your way.</p>
+      <span class="kicker reveal">Everything in one place</span>
+      <h2 class="reveal">A launcher that does the busywork.</h2>
+      <p class="sub reveal">Instances, loaders, content, servers, worlds — handled. You click Play.</p>
 
-      <div class="grid">
-        <div class="card reveal">
-          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg></div>
-          <h3>Instances</h3>
-          <p>Isolated setups per pack or version. Create, duplicate, custom images, per-instance RAM and JVM flags, playtime tracking.</p>
+      <div class="bento stagger">
+        <div class="cell cell-lib reveal">
+          <div class="txt">
+            <div class="top"><i data-lucide="layout-grid"></i><h3>Your library, organized</h3></div>
+            <p>Isolated instances per pack or version — duplicate them, give them custom artwork, cap their RAM, track playtime.</p>
+          </div>
+          <div class="pic"><img src="assets/shot-library.png" alt="Native library grid of instances" loading="lazy" /></div>
         </div>
-        <div class="card reveal">
-          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="M4 7.5 12 12l8-4.5M12 12v9"/></svg></div>
-          <h3>One-click mod loaders</h3>
-          <p>Fabric, Quilt, Forge, and NeoForge install themselves — with the right Java (8/17/21) fetched automatically.</p>
-        </div>
-        <div class="card reveal">
-          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
-          <h3>Modrinth built in</h3>
-          <p>Search mods, resource packs, and shaders in-app. One-click installs resolve required dependencies for you.</p>
-        </div>
-        <div class="card reveal">
-          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></div>
-          <h3>Bulletproof downloads</h3>
-          <p>Parallel, resumable, checksum-verified. Real speed and ETA. Corrupt files self-heal on the next launch.</p>
-        </div>
-        <div class="card reveal">
-          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="12" rx="2"/><path d="M8 20h8m-4-4v4"/></svg></div>
-          <h3>Servers</h3>
-          <p>Live status, MOTD, player counts and ping for your server list — then quick-join straight into the game.</p>
-        </div>
-        <div class="card reveal">
-          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.9 5.7 3.9 9S14.5 18.4 12 21c-2.5-2.6-3.9-5.7-3.9-9S9.5 5.6 12 3Z"/></svg></div>
-          <h3>Worlds &amp; screenshots</h3>
-          <p>Browse singleplayer worlds, back them up to zip, and flip through your in-game screenshots without leaving the launcher.</p>
-        </div>
-        <div class="card reveal">
-          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg></div>
-          <h3>Sign-in that just works</h3>
-          <p>Microsoft login in a popup window — no setup, no codes to copy. Tokens live encrypted in your OS keychain. Offline profiles included.</p>
-        </div>
-        <div class="card reveal">
-          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4.5 12.5H11L9.5 22 19 10.5h-6.5L13 2Z"/></svg></div>
-          <h3>Fast &amp; smooth</h3>
-          <p>Under a second to launch. 60&nbsp;fps everywhere. Downloads never block the interface — heavy work runs off-thread.</p>
-        </div>
-        <div class="card reveal">
-          <div class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></div>
-          <h3>Auto-updates</h3>
-          <p>Checks quietly, downloads in the background, applies on restart. Delta updates on Windows keep them small.</p>
-        </div>
-      </div>
 
-      <div class="loaders reveal">
-        <span class="loader-pill">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.504 1.132a1 1 0 01.992 0l1.75 1a1 1 0 11-.992 1.736L10 3.152l-1.254.716a1 1 0 11-.992-1.736l1.75-1zM5.618 4.504a1 1 0 01-.372 1.364L5.016 6l.23.132a1 1 0 11-.992 1.736L4 7.723V8a1 1 0 01-2 0V6a.996.996 0 01.52-.878l1.734-.99a1 1 0 011.364.372zm8.764 0a1 1 0 011.364-.372l1.733.99A1.002 1.002 0 0118 6v2a1 1 0 11-2 0v-.277l-.254.145a1 1 0 11-.992-1.736l.23-.132-.23-.132a1 1 0 01-.372-1.364zm-7 4a1 1 0 011.364-.372L10 8.848l1.254-.716a1 1 0 11.992 1.736L11 10.58V12a1 1 0 11-2 0v-1.42l-1.246-.712a1 1 0 01-.372-1.364zM3 11a1 1 0 011 1v1.42l1.246.712a1 1 0 11-.992 1.736l-1.75-1A1 1 0 012 14v-2a1 1 0 011-1zm14 0a1 1 0 011 1v2a1 1 0 01-.504.868l-1.75 1a1 1 0 11-.992-1.736L16 13.42V12a1 1 0 011-1zm-9.618 5.504a1 1 0 011.364-.372l.254.145V16a1 1 0 112 0v.277l.254-.145a1 1 0 11.992 1.736l-1.735.992a.995.995 0 01-1.022 0l-1.735-.992a1 1 0 01-.372-1.364z"/></svg>
-          Vanilla
-        </span>
-        <span class="loader-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="23" d="m820 761-85.6-87.6c-4.6-4.7-10.4-9.6-25.9 1-19.9 13.6-8.4 21.9-5.2 25.4 8.2 9 84.1 89 97.2 104 2.5 2.8-20.3-22.5-6.5-39.7 5.4-7 18-12 26-3 6.5 7.3 10.7 18-3.4 29.7-24.7 20.4-102 82.4-127 103-12.5 10.3-28.5 2.3-35.8-6-7.5-8.9-30.6-34.6-51.3-58.2-5.5-6.3-4.1-19.6 2.3-25 35-30.3 91.9-73.8 111.9-90.8" transform="matrix(.08671 0 0 .0867 -49.8 -56)"/></svg>
-          Fabric
-        </span>
-        <span class="loader-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 -3.2 -3.2)"/><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 -3.2 7)"/><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 6.9 -3.2)"/><path stroke="currentColor" stroke-width="70.4" d="M442.5 234.8c0-7-5.6-12.5-12.5-12.5H234.7c-6.8 0-12.4 5.6-12.4 12.5V430c0 6.9 5.6 12.5 12.4 12.5H430c6.9 0 12.5-5.6 12.5-12.5V234.8Z" transform="rotate(45 3.5 24) scale(.02843 .02835)"/></svg>
-          Quilt
-        </span>
-        <span class="loader-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="2" d="M2 7.5h8v-2h12v2s-7 3.4-7 6 3.1 3.1 3.1 3.1l.9 3.9H5l1-4.1s3.8.1 4-2.9c.2-2.7-6.5-.7-8-6Z"/></svg>
-          Forge
-        </span>
-        <span class="loader-pill">
-          <svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="m12 19.2v2m0-2v2"/><path d="m8.4 1.3c0.5 1.5 0.7 3 0.1 4.6-0.2 0.5-0.9 1.5-1.6 1.5m8.7-6.1c-0.5 1.5-0.7 3-0.1 4.6 0.2 0.6 0.9 1.5 1.6 1.5"/><path d="m3.6 15.8h-1.7m18.5 0h1.7"/><path d="m3.2 12.1h-1.7m19.3 0h1.8"/><path d="m8.1 12.7v1.6m7.8-1.6v1.6"/><path d="m10.8 18h1.2m0 1.2-1.2-1.2m2.4 0h-1.2m0 1.2 1.2-1.2"/><path d="m4 9.7c-0.5 1.2-0.8 2.4-0.8 3.7 0 3.1 2.9 6.3 5.3 8.2 0.9 0.7 2.2 1.1 3.4 1.1m0.1-17.8c-1.1 0-2.1 0.2-3.2 0.7m11.2 4.1c0.5 1.2 0.8 2.4 0.8 3.7 0 3.1-2.9 6.3-5.3 8.2-0.9 0.7-2.2 1.1-3.4 1.1m-0.1-17.8c1.1 0 2.1 0.2 3.2 0.7"/><path d="m4 9.7c-0.2-1.8-0.3-3.7 0.5-5.5s2.2-2.6 3.9-3m11.6 8.5c0.2-1.9 0.3-3.7-0.5-5.5s-2.2-2.6-3.9-3"/><path d="m12 21.2-2.4 0.4m2.4-0.4 2.4 0.4"/></g></svg>
-          NeoForge
-        </span>
+        <div class="cell cell-dl reveal">
+          <div class="top"><i data-lucide="arrow-down-to-line"></i><h3>Bulletproof downloads</h3></div>
+          <p>Parallel, resumable, checksum-verified.</p>
+          <div class="mockrow"><span>sodium-fabric-0.6.0.jar</span><span>12.4 MB/s</span></div>
+          <div class="mockbar"><i></i></div>
+        </div>
+
+        <div class="cell cell-srv reveal">
+          <div class="top"><i data-lucide="server"></i><h3>Servers, live</h3></div>
+          <p>Status, MOTD and ping — then quick-join.</p>
+          <div class="srvrow"><span class="dot"></span> Hypixel <span class="ms">23 ms</span></div>
+        </div>
+
+        <div class="cell cell-load reveal">
+          <div>
+            <div class="top"><i data-lucide="boxes"></i><h3>One-click mod loaders</h3></div>
+            <p>The right Java fetched and matched automatically.</p>
+          </div>
+          <div class="loadmarks">
+            <span class="lmark"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="23" d="m820 761-85.6-87.6c-4.6-4.7-10.4-9.6-25.9 1-19.9 13.6-8.4 21.9-5.2 25.4 8.2 9 84.1 89 97.2 104 2.5 2.8-20.3-22.5-6.5-39.7 5.4-7 18-12 26-3 6.5 7.3 10.7 18-3.4 29.7-24.7 20.4-102 82.4-127 103-12.5 10.3-28.5 2.3-35.8-6-7.5-8.9-30.6-34.6-51.3-58.2-5.5-6.3-4.1-19.6 2.3-25 35-30.3 91.9-73.8 111.9-90.8" transform="matrix(.08671 0 0 .0867 -49.8 -56)"/></svg> Fabric</span>
+            <span class="lmark"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 -3.2 -3.2)"/><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 -3.2 7)"/><path stroke="currentColor" stroke-width="65.6" d="M442.5 233.9c0-6.4-5.2-11.6-11.6-11.6h-197c-6.4 0-11.6 5.2-11.6 11.6v197c0 6.4 5.2 11.6 11.6 11.6h197c6.4 0 11.6-5.2 11.6-11.7v-197 .1Z" transform="matrix(.03053 0 0 .03046 6.9 -3.2)"/><path stroke="currentColor" stroke-width="70.4" d="M442.5 234.8c0-7-5.6-12.5-12.5-12.5H234.7c-6.8 0-12.4 5.6-12.4 12.5V430c0 6.9 5.6 12.5 12.4 12.5H430c6.9 0 12.5-5.6 12.5-12.5V234.8Z" transform="rotate(45 3.5 24) scale(.02843 .02835)"/></svg> Quilt</span>
+            <span class="lmark"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="currentColor" stroke-width="2" d="M2 7.5h8v-2h12v2s-7 3.4-7 6 3.1 3.1 3.1 3.1l.9 3.9H5l1-4.1s3.8.1 4-2.9c.2-2.7-6.5-.7-8-6Z"/></svg> Forge</span>
+            <span class="lmark"><svg viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="m12 19.2v2m0-2v2"/><path d="m8.4 1.3c0.5 1.5 0.7 3 0.1 4.6-0.2 0.5-0.9 1.5-1.6 1.5m8.7-6.1c-0.5 1.5-0.7 3-0.1 4.6 0.2 0.6 0.9 1.5 1.6 1.5"/><path d="m3.6 15.8h-1.7m18.5 0h1.7"/><path d="m3.2 12.1h-1.7m19.3 0h1.8"/><path d="m8.1 12.7v1.6m7.8-1.6v1.6"/><path d="m10.8 18h1.2m0 1.2-1.2-1.2m2.4 0h-1.2m0 1.2 1.2-1.2"/><path d="m4 9.7c-0.5 1.2-0.8 2.4-0.8 3.7 0 3.1 2.9 6.3 5.3 8.2 0.9 0.7 2.2 1.1 3.4 1.1m0.1-17.8c-1.1 0-2.1 0.2-3.2 0.7m11.2 4.1c0.5 1.2 0.8 2.4 0.8 3.7 0 3.1-2.9 6.3-5.3 8.2-0.9 0.7-2.2 1.1-3.4 1.1m-0.1-17.8c1.1 0 2.1 0.2 3.2 0.7"/><path d="m4 9.7c-0.2-1.8-0.3-3.7 0.5-5.5s2.2-2.6 3.9-3m11.6 8.5c0.2-1.9 0.3-3.7-0.5-5.5s-2.2-2.6-3.9-3"/><path d="m12 21.2-2.4 0.4m2.4-0.4 2.4 0.4"/></g></svg> NeoForge</span>
+          </div>
+        </div>
+
+        <div class="cell cell-skin reveal">
+          <img src="https://mc-heads.net/avatar/banks7/104" alt="" width="52" height="52" loading="lazy"
+               onerror="this.style.background='#7a5a3a';this.removeAttribute('src')" />
+          <div>
+            <h3>Your skin, everywhere</h3>
+            <p>Microsoft sign-in in a popup; offline profiles included.</p>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ======= Screens ======= -->
-  <section id="screens" style="padding-top: 0">
+  <!-- ============================ Deep dives ============================ -->
+  <section id="dives" class="section" style="padding-top: 0">
     <div class="wrap">
-      <span class="kicker reveal">A closer look</span>
-      <h2 class="reveal">Designed in monochrome.</h2>
-      <p class="sub reveal">Pure black surfaces, white accents, and color only where it means something. Prefer the classic green? It's one toggle away in Settings.</p>
-      <div class="shots">
-        <figure class="shot reveal">
-          <img src="assets/shot-library.png" alt="Library grid of instances" loading="lazy" width="1366" height="768" />
-          <figcaption>Your library — every instance one click from playing</figcaption>
-        </figure>
-        <figure class="shot reveal">
-          <img src="assets/shot-instance.png" alt="Instance detail with content manager" loading="lazy" width="1366" height="768" />
-          <figcaption>Mods, worlds, screenshots, logs and options per instance</figcaption>
-        </figure>
-        <figure class="shot reveal">
-          <img src="assets/shot-create.png" alt="Create instance dialog" loading="lazy" width="1366" height="768" />
-          <figcaption>New instance in seconds — loader, version, done</figcaption>
-        </figure>
-        <figure class="shot reveal">
-          <img src="assets/shot-home.png" alt="Home screen" loading="lazy" width="1366" height="768" />
-          <figcaption>Home — jump back in where you left off</figcaption>
-        </figure>
+      <span class="kicker reveal">The tour</span>
+      <h2 class="reveal">Three screens you'll live in.</h2>
+
+      <div class="dive">
+        <div class="dpic reveal-l"><img src="assets/shot-discover.png" alt="Discover screen searching mods with one-click install" loading="lazy" width="1366" height="768" /></div>
+        <div class="dcopy reveal-r">
+          <h3>A content store, minus the store.</h3>
+          <p>Search mods, resource packs and shaders right inside the launcher, filtered to your instance's loader and version.</p>
+          <ul>
+            <li><i data-lucide="check"></i> One-click installs resolve required dependencies</li>
+            <li><i data-lucide="check"></i> Compatible-only results — no version roulette</li>
+            <li><i data-lucide="check"></i> Updates surfaced when authors ship them</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="dive flip">
+        <div class="dcopy reveal-l">
+          <h3>Zero to modded in twenty seconds.</h3>
+          <p>Pick a loader, pick a version, hit Create. Native installs the loader, fetches the matching Java and builds the instance while you name it.</p>
+          <ul>
+            <li><i data-lucide="check"></i> Fabric, Quilt, Forge, NeoForge — or clean Vanilla</li>
+            <li><i data-lucide="check"></i> Stable and latest channels per loader</li>
+            <li><i data-lucide="check"></i> Custom artwork, RAM and JVM flags per instance</li>
+          </ul>
+        </div>
+        <div class="dpic reveal-r"><img src="assets/shot-create.png" alt="Create instance dialog with loader and version pickers" loading="lazy" width="1366" height="768" /></div>
+      </div>
+
+      <div class="dive">
+        <div class="dpic reveal-l"><img src="assets/shot-instance.png" alt="Instance screen with content, worlds, screenshots, logs and options" loading="lazy" width="1366" height="768" /></div>
+        <div class="dcopy reveal-r">
+          <h3>Every instance, fully managed.</h3>
+          <p>Content, worlds, screenshots, logs and options live in one place per instance — no folder spelunking.</p>
+          <ul>
+            <li><i data-lucide="check"></i> Back up worlds to zip in one click</li>
+            <li><i data-lucide="check"></i> Live log console with crash capture</li>
+            <li><i data-lucide="check"></i> Screenshot gallery straight from the game</li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ======= Download ======= -->
-  <section id="download" class="dl">
+  <!-- ============================ Green band ============================ -->
+  <section class="band" id="performance">
+    <div class="wrap band-grid">
+      <div>
+        <h2 class="reveal">Fast is a feature.</h2>
+        <p class="sub reveal">Heavy work runs off the interface thread. The launcher never stutters — even mid-download on a potato.</p>
+        <div class="actions reveal">
+          <a class="btn btn-ink" href="downloads/Native-Setup-0.1.1.exe"><i data-lucide="download"></i> Download free</a>
+        </div>
+      </div>
+      <div class="band-stats stagger">
+        <div class="bstat reveal"><div class="num"><span data-count="0.9" data-decimals="1">0</span>s</div><div class="lbl">Cold start</div></div>
+        <div class="bstat reveal"><div class="num"><span data-count="60">0</span> fps</div><div class="lbl">All motion</div></div>
+        <div class="bstat reveal"><div class="num"><span data-count="100">0</span>%</div><div class="lbl">Off-thread I/O</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ Download ============================ -->
+  <section id="download" class="section">
     <div class="wrap">
       <span class="kicker reveal">Get Native</span>
-      <h2 class="reveal">Download v0.1.0</h2>
-      <p class="sub reveal" style="margin-left:auto;margin-right:auto">Free and open source. Auto-updates keep you current after the first install.</p>
-      <div class="dl-cards">
-        <div class="dl-card reveal">
-          <div class="os">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5 10.5 4.4v7.1H3V5.5ZM3 18.5v-6h7.5v7.1L3 18.5ZM11.5 4.2 21 3v8.5h-9.5V4.2ZM21 12.5V21l-9.5-1.2v-7.3H21Z"/></svg>
-          </div>
+      <h2 class="reveal">Download Native 0.1.1</h2>
+      <p class="sub reveal">Free for personal use. Install once — automatic updates keep you current.</p>
+
+      <div class="dlpanel reveal">
+        <div class="dlcol primary">
+          <span class="rec"><i data-lucide="star" style="width:12px;height:12px"></i> Recommended</span>
+          <div class="os"><svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3V5.5ZM3 18.5v-6h7.5v7.1L3 18.5ZM11.5 4.2 21 3v8.5h-9.5V4.2ZM21 12.5V21l-9.5-1.2v-7.3H21Z"/></svg></div>
           <h3>Windows</h3>
-          <p>Windows 10 / 11 · 64-bit · installer with auto-updates</p>
-          <a class="btn btn-primary" href="downloads/Native-Setup-0.1.0.exe">
-            Download Setup <small>.exe · 79 MB</small>
-          </a>
-          <p style="margin:12px 0 0"><a href="downloads/Native-0.1.0-windows-x64.zip" style="color:var(--text-3)">or portable .zip</a></p>
+          <p class="req">Windows 10 / 11 · 64-bit · auto-updates</p>
+          <a class="btn btn-green" href="downloads/Native-Setup-0.1.1.exe"><i data-lucide="download"></i>Setup · 79 MB</a>
+          <p class="alt"><a href="downloads/Native-0.1.1-windows-x64.zip">portable .zip · 110 MB</a></p>
         </div>
-        <div class="dl-card reveal">
-          <div class="os">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-2 0-3.5 1.6-3.5 3.6 0 1.2.1 2-.4 3.2-.8 1.8-2.8 3.5-3.6 5.9-.6 1.9-.2 4 1.2 5.4.9.9 3 .9 4.1.4a5.4 5.4 0 0 1 4.4 0c1.1.5 3.2.5 4.1-.4 1.4-1.4 1.8-3.5 1.2-5.4-.8-2.4-2.8-4.1-3.6-5.9-.5-1.2-.4-2-.4-3.2C15.5 3.6 14 2 12 2Z"/><path d="M9.5 8.5h.01M14.5 8.5h.01"/></svg>
-          </div>
+        <div class="dlcol">
+          <div class="os"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2c-2 0-3.5 1.6-3.5 3.6 0 1.2.1 2-.4 3.2-.8 1.8-2.8 3.5-3.6 5.9-.6 1.9-.2 4 1.2 5.4.9.9 3 .9 4.1.4a5.4 5.4 0 0 1 4.4 0c1.1.5 3.2.5 4.1-.4 1.4-1.4 1.8-3.5 1.2-5.4-.8-2.4-2.8-4.1-3.6-5.9-.5-1.2-.4-2-.4-3.2C15.5 3.6 14 2 12 2Z"/><path d="M9.5 8.5h.01M14.5 8.5h.01"/></svg></div>
           <h3>Linux</h3>
-          <p>AppImage with auto-updates · .deb via releases</p>
-          <a class="btn btn-primary" href="downloads/Native-0.1.0-arm64.AppImage">
-            Download AppImage <small>101 MB</small>
-          </a>
-          <p style="margin:12px 0 0"><a href="https://github.com/native-launcher/native/releases/latest" style="color:var(--text-3)">all Linux builds</a></p>
+          <p class="req">AppImage · auto-updates · any distro</p>
+          <a class="btn btn-dark" href="downloads/Native-0.1.1-arm64.AppImage"><i data-lucide="download"></i>AppImage · 101 MB</a>
+          <p class="alt">.deb available on request</p>
         </div>
-        <div class="dl-card soon reveal">
-          <div class="os">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 12.9c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-2-.9-3.2-.9C6.7 7.3 5.1 8.3 4.2 9.8c-1.8 3.1-.5 7.8 1.3 10.3.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.5 0 2 .8 3.3.8 1.4 0 2.2-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9-.1 0-2.8-1.1-2.8-4.4ZM14.3 5.1c.7-.8 1.1-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4Z"/></svg>
-          </div>
+        <div class="dlcol soon">
+          <div class="os"><svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.7 12.9c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-2-.9-3.2-.9C6.7 7.3 5.1 8.3 4.2 9.8c-1.8 3.1-.5 7.8 1.3 10.3.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.5 0 2 .8 3.3.8 1.4 0 2.2-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9-.1 0-2.8-1.1-2.8-4.4ZM14.3 5.1c.7-.8 1.1-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4Z"/></svg></div>
           <h3>macOS</h3>
-          <p>Planned — next phase</p>
-          <a class="btn" href="#">Coming soon</a>
+          <p class="req">In development</p>
+          <a class="btn" href="#"><i data-lucide="clock"></i>Coming soon</a>
         </div>
       </div>
-      <p class="meta reveal" style="margin-top:26px;color:var(--text-3);font-size:13px">
-        Unsigned builds: Windows SmartScreen may ask once — choose “More info → Run anyway”.
+
+      <p class="fineprint reveal">
+        Builds are not yet code-signed: Windows SmartScreen may ask once — choose “More info → Run anyway”.
+        You must own Minecraft: Java Edition to play online.
       </p>
     </div>
   </section>
+
+  <!-- ============================ FAQ ============================ -->
+  <section id="faq" class="section" style="padding-top: 0">
+    <div class="wrap">
+      <span class="kicker reveal">Questions</span>
+      <h2 class="reveal">Frequently asked</h2>
+      <div class="faqgrid stagger">
+        <div class="faq-item reveal">
+          <button class="faq-q" aria-expanded="false">Is Native free?<i data-lucide="chevron-down"></i></button>
+          <div class="faq-a"><div><p>Yes — Native is free to download and use for personal play. You only need to own Minecraft: Java Edition to play online.</p></div></div>
+        </div>
+        <div class="faq-item reveal">
+          <button class="faq-q" aria-expanded="false">Do I need a Microsoft account?<i data-lucide="chevron-down"></i></button>
+          <div class="faq-a"><div><p>For online play, yes — sign-in opens a standard Microsoft window and takes seconds. For singleplayer and LAN testing you can create an offline profile instead.</p></div></div>
+        </div>
+        <div class="faq-item reveal">
+          <button class="faq-q" aria-expanded="false">Will my existing modpacks work?<i data-lucide="chevron-down"></i></button>
+          <div class="faq-a"><div><p>Native supports Vanilla, Fabric, Quilt, Forge and NeoForge across Minecraft versions, and matches the correct Java runtime automatically.</p></div></div>
+        </div>
+        <div class="faq-item reveal">
+          <button class="faq-q" aria-expanded="false">How do updates work?<i data-lucide="chevron-down"></i></button>
+          <div class="faq-a"><div><p>Native checks quietly in the background, downloads while you play, and applies on the next restart. On Windows, delta packages keep updates small.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="endcap" aria-hidden="true">
+    <div class="watermark">NATIVE</div>
+  </div>
 </main>
 
 <footer>
   <div class="wrap">
     <div class="foot">
-      <a class="brand" href="#">
-        <img src="assets/favicon-mono.png" alt="" width="22" height="22" />
+      <a class="brand" href="#top">
+        <img src="assets/favicon.png" alt="" width="26" height="26" />
         Native
       </a>
-      <nav class="links">
-        <a href="https://github.com/native-launcher/native">GitHub</a>
-        <a href="https://github.com/native-launcher/native/releases">Releases</a>
-        <a href="https://github.com/native-launcher/native/issues">Issues</a>
-        <a href="https://github.com/native-launcher/native/blob/main/LICENSE">MIT License</a>
+      <nav class="links" aria-label="Footer">
+        <a href="#download">Download</a>
+        <a href="#faq">FAQ</a>
+        <a href="mailto:support@nativelaunch.xyz">Support</a>
       </nav>
     </div>
     <p class="disclaimer">
-      Native is an independent open-source project, not affiliated with Mojang, Microsoft, or
-      Minecraft. You must own Minecraft: Java Edition to play online. Loader marks courtesy of
-      the Modrinth open-source icon set.
+      © 2026 Native Labs. All rights reserved. Native is an independent product and is not
+      affiliated with, endorsed by, or associated with Mojang, Microsoft, or Minecraft. You must
+      own Minecraft: Java Edition to play online. Loader marks courtesy of the Modrinth icon set.
     </p>
   </div>
 </footer>
 
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 <script>
-  // Scroll reveal — IntersectionObserver, transform/opacity only.
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) {
-          e.target.classList.add('in')
-          io.unobserve(e.target)
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+  const hoverable = matchMedia('(hover: hover)').matches
+
+  if (window.lucide) lucide.createIcons({ attrs: { 'stroke-width': 2 } })
+
+  // Seamless marquee: duplicate the chip set once, animation slides -50%.
+  const track = document.getElementById('mtrack')
+  track.innerHTML += track.innerHTML
+
+  // Scroll progress + header hairline (one rAF-throttled handler).
+  const bar = document.getElementById('progress')
+  const header = document.querySelector('header')
+  let ticking = false
+  const onScroll = () => {
+    if (ticking) return
+    ticking = true
+    requestAnimationFrame(() => {
+      const max = document.documentElement.scrollHeight - innerHeight
+      bar.style.width = `${max > 0 ? (scrollY / max) * 100 : 0}%`
+      header.classList.toggle('scrolled', scrollY > 8)
+      ticking = false
+    })
+  }
+  onScroll()
+  addEventListener('scroll', onScroll, { passive: true })
+
+  // Staggered reveals.
+  document.querySelectorAll('.stagger').forEach((g) =>
+    [...g.children].forEach((el, i) => el.style.setProperty('--d', `${i * 80}ms`))
+  )
+  const io = new IntersectionObserver((es) => {
+    for (const e of es) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) }
+  }, { threshold: 0.12 })
+  document.querySelectorAll('.reveal, .reveal-l, .reveal-r').forEach((el) => io.observe(el))
+
+  // Nav scrollspy.
+  const links = [...document.querySelectorAll('#nav-links a')]
+  const spy = new IntersectionObserver((es) => {
+    const vis = es.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+    if (!vis) return
+    links.forEach((l) => l.classList.toggle('active', l.dataset.spy === vis.target.id))
+  }, { rootMargin: '-38% 0px -52% 0px', threshold: [0, 0.2, 0.6] })
+  links.forEach((l) => { const s = document.getElementById(l.dataset.spy); if (s) spy.observe(s) })
+
+  // Bento spotlight follows the cursor.
+  if (hoverable) {
+    document.querySelectorAll('.cell').forEach((c) =>
+      c.addEventListener('mousemove', (e) => {
+        const r = c.getBoundingClientRect()
+        c.style.setProperty('--mx', `${e.clientX - r.left}px`)
+        c.style.setProperty('--my', `${e.clientY - r.top}px`)
+      })
+    )
+  }
+
+  // Count-up stats (green band).
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3)
+  const countIO = new IntersectionObserver((es) => {
+    for (const e of es) {
+      if (!e.isIntersecting) continue
+      countIO.unobserve(e.target)
+      const el = e.target
+      const target = parseFloat(el.dataset.count)
+      const dec = parseInt(el.dataset.decimals || '0', 10)
+      if (reduced) { el.textContent = target.toFixed(dec); continue }
+      const t0 = performance.now()
+      const tick = (t) => {
+        const p = Math.min(1, (t - t0) / 1300)
+        el.textContent = (target * easeOut(p)).toFixed(dec)
+        if (p < 1) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    }
+  }, { threshold: 0.5 })
+  document.querySelectorAll('[data-count]').forEach((el) => countIO.observe(el))
+
+  // FAQ accordions.
+  document.querySelectorAll('.faq-item').forEach((item) => {
+    const q = item.querySelector('.faq-q')
+    q.addEventListener('click', () => {
+      const open = item.classList.toggle('open')
+      q.setAttribute('aria-expanded', String(open))
+    })
+  })
+
+  /* ============ Hero: OLED pixel field ============ */
+  const cv = document.getElementById('pixels')
+  const hero = document.getElementById('hero')
+  const ctx = cv.getContext('2d')
+  let dots = [], cols = 0, rows = 0, dpr = 1
+  const GAP = 26
+  const sizeCanvas = () => {
+    dpr = Math.min(devicePixelRatio || 1, 2)
+    const w = hero.clientWidth, hgt = hero.clientHeight
+    cv.width = w * dpr; cv.height = hgt * dpr
+    cv.style.width = w + 'px'; cv.style.height = hgt + 'px'
+    cols = Math.ceil(w / GAP); rows = Math.ceil(hgt / GAP)
+    dots = new Float32Array(cols * rows) // current alpha per dot
+  }
+  sizeCanvas()
+  addEventListener('resize', sizeCanvas)
+  let mx = -9999, my = -9999
+  hero.addEventListener('mousemove', (e) => {
+    const r = hero.getBoundingClientRect()
+    mx = e.clientX - r.left; my = e.clientY - r.top
+  })
+  hero.addEventListener('mouseleave', () => { mx = my = -9999 })
+  let heroVisible = true
+  new IntersectionObserver((es) => { heroVisible = es[0].isIntersecting }).observe(hero)
+  const R = 150
+  const drawPixels = () => {
+    if (heroVisible && !reduced) {
+      ctx.clearRect(0, 0, cv.width, cv.height)
+      for (let gy = 0; gy < rows; gy++) {
+        for (let gx = 0; gx < cols; gx++) {
+          const i = gy * cols + gx
+          const x = gx * GAP + GAP / 2, y = gy * GAP + GAP / 2
+          const dx = x - mx, dy = y - my
+          const d2 = dx * dx + dy * dy
+          let target = d2 < R * R ? (1 - Math.sqrt(d2) / R) * 0.85 : 0
+          // ambient twinkle: a few random dots breathe on their own
+          if (Math.random() < 0.00035) target = Math.max(target, 0.3 + Math.random() * 0.35)
+          dots[i] += (Math.max(target, 0) - dots[i]) * (target > dots[i] ? 0.3 : 0.045)
+          const a = dots[i]
+          if (a > 0.012) {
+            ctx.fillStyle = `rgba(27, 217, 106, ${a})`
+            ctx.fillRect((x - 1.4) * dpr, (y - 1.4) * dpr, 2.8 * dpr, 2.8 * dpr)
+          } else {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.045)'
+            ctx.fillRect((x - 1) * dpr, (y - 1) * dpr, 2 * dpr, 2 * dpr)
+          }
         }
       }
-    },
-    { threshold: 0.12 }
-  )
-  document.querySelectorAll('.reveal').forEach((el) => io.observe(el))
+    }
+    requestAnimationFrame(drawPixels)
+  }
+  if (reduced) {
+    // static faint grid, no animation loop
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'
+    for (let gy = 0; gy < rows; gy++) for (let gx = 0; gx < cols; gx++)
+      ctx.fillRect((gx * GAP + GAP / 2) * dpr, (gy * GAP + GAP / 2) * dpr, 2 * dpr, 2 * dpr)
+  } else requestAnimationFrame(drawPixels)
+
+  /* ============ Scroll-driven product reveal ============ */
+  const stage = document.getElementById('reveal-stage')
+  const frame3 = document.getElementById('frame3')
+  const clamp01 = (v) => Math.max(0, Math.min(1, v))
+  const onReveal = () => {
+    const r = stage.getBoundingClientRect()
+    const p = clamp01(1 - (r.top - innerHeight * 0.12) / (innerHeight * 0.65))
+    if (reduced) { frame3.style.transform = ''; frame3.style.opacity = 1; return }
+    frame3.style.transform =
+      `perspective(1300px) rotateX(${(1 - p) * 16}deg) translateY(${(1 - p) * 90}px) scale(${0.9 + p * 0.1})`
+    frame3.style.opacity = String(0.25 + p * 0.75)
+  }
+  onReveal()
+  addEventListener('scroll', () => requestAnimationFrame(onReveal), { passive: true })
 </script>
 
 </body>

@@ -8,8 +8,10 @@ import { useNav } from '@/stores/nav'
 import { bootstrapStores } from '@/stores/data'
 import { HomeScreen } from '@/screens/Home'
 import { ToastLayer } from '@/components/ToastLayer'
+import { OnboardingTour } from '@/components/OnboardingTour'
 import { UpdateToast } from '@/components/UpdateToast'
 import { CrashDialog } from '@/components/CrashDialog'
+import { JavaDownloadDialog } from '@/components/JavaDownloadDialog'
 import { DownloadsIndicator } from '@/components/DownloadsIndicator'
 
 // Heavy views are lazy-loaded; Home is eager for instant cold start.
@@ -22,6 +24,8 @@ const CreateInstanceModal = lazy(() =>
   import('@/screens/CreateInstanceModal').then((m) => ({ default: m.CreateInstanceModal }))
 )
 const AccountsModal = lazy(() => import('@/screens/AccountsModal').then((m) => ({ default: m.AccountsModal })))
+const ProjectModal = lazy(() => import('@/components/ProjectModal').then((m) => ({ default: m.ProjectModal })))
+const NewsModal = lazy(() => import('@/components/NewsModal').then((m) => ({ default: m.NewsModal })))
 
 function ScreenFallback(): React.JSX.Element {
   return (
@@ -80,10 +84,14 @@ export default function App(): React.JSX.Element {
         <SettingsModal />
         <CreateInstanceModal />
         <AccountsModal />
+        <ProjectModal />
+        <NewsModal />
       </Suspense>
       <UpdateToast />
       <CrashDialog />
+      <JavaDownloadDialog />
       <ToastLayer />
+      <OnboardingTour />
     </div>
   )
 }

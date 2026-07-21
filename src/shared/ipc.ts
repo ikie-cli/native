@@ -55,12 +55,24 @@ export const IPC = {
   },
   content: {
     search: 'content:search',
+    project: 'content:project',
     versions: 'content:versions',
     install: 'content:install',
     listLocal: 'content:list-local',
+    installedProjects: 'content:installed-projects',
     toggle: 'content:toggle',
     removeLocal: 'content:remove-local',
-    addLocalFiles: 'content:add-local-files'
+    addLocalFiles: 'content:add-local-files',
+    onLocalChanged: 'content:local-changed',
+    updates: 'content:updates',
+    checkUpdates: 'content:check-updates',
+    applyUpdate: 'content:apply-update',
+    updateAll: 'content:update-all',
+    onUpdatesChanged: 'content:updates-changed'
+  },
+  packs: {
+    installModrinth: 'packs:install-modrinth',
+    importFile: 'packs:import-file'
   },
   worlds: {
     list: 'worlds:list',
@@ -71,6 +83,13 @@ export const IPC = {
     list: 'screenshots:list',
     remove: 'screenshots:remove',
     data: 'screenshots:data'
+  },
+  files: {
+    list: 'files:list',
+    openPath: 'files:open-path',
+    reveal: 'files:reveal',
+    delete: 'files:delete',
+    readText: 'files:read-text'
   },
   servers: {
     list: 'servers:list',
@@ -91,7 +110,9 @@ export const IPC = {
     list: 'java:list',
     detect: 'java:detect',
     download: 'java:download',
-    test: 'java:test'
+    test: 'java:test',
+    onAskDownload: 'java:ask-download',
+    answerDownload: 'java:answer-download'
   },
   settings: {
     get: 'settings:get',

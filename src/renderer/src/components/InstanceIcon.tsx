@@ -69,11 +69,29 @@ export function InstanceIcon({
   if (icon?.startsWith('image:')) {
     return (
       <div
-        className={cn('shrink-0 overflow-hidden bg-surface-input', className)}
+        className={cn('relative shrink-0 overflow-hidden bg-surface-input', className)}
         style={{ width: size, height: size, borderRadius: radius }}
       >
         {imageSrc && (
-          <img src={imageSrc} alt="" className="h-full w-full object-cover" draggable={false} />
+          <>
+            {/* Non-square artwork: a blurred cover copy fills the tile so
+                letterbox areas show the artwork's own colors, never bars… */}
+            <img
+              src={imageSrc}
+              alt=""
+              aria-hidden
+              draggable={false}
+              className="absolute inset-0 h-full w-full scale-125 object-cover opacity-60"
+              style={{ filter: `blur(${Math.max(3, size / 10)}px)` }}
+            />
+            {/* …while the sharp copy stays fully visible, uncropped. */}
+            <img
+              src={imageSrc}
+              alt=""
+              draggable={false}
+              className="relative h-full w-full object-contain"
+            />
+          </>
         )}
       </div>
     )

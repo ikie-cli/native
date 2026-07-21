@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type InstanceTab = 'content' | 'worlds' | 'screenshots' | 'logs' | 'options'
+export type InstanceTab = 'content' | 'worlds' | 'screenshots' | 'files' | 'logs' | 'options'
 
 export type Route =
   | { name: 'home' }
@@ -52,10 +52,16 @@ interface ModalState {
   createOpen: boolean
   accountsOpen: boolean
   logsExpanded: boolean
+  /** News article open in the reader modal (id from useNews items). */
+  newsItemId: string | null
+  /** Project open in the mod detail modal. */
+  projectRef: { platform: 'modrinth' | 'curseforge'; projectId: string; instanceId: string | null } | null
   setSettingsOpen: (v: boolean) => void
   setCreateOpen: (v: boolean) => void
   setAccountsOpen: (v: boolean) => void
   setLogsExpanded: (v: boolean) => void
+  openNews: (id: string | null) => void
+  openProject: (ref: ModalState['projectRef']) => void
 }
 
 export const useModals = create<ModalState>((set) => ({
@@ -63,8 +69,12 @@ export const useModals = create<ModalState>((set) => ({
   createOpen: false,
   accountsOpen: false,
   logsExpanded: false,
+  newsItemId: null,
+  projectRef: null,
   setSettingsOpen: (v) => set({ settingsOpen: v }),
   setCreateOpen: (v) => set({ createOpen: v }),
   setAccountsOpen: (v) => set({ accountsOpen: v }),
-  setLogsExpanded: (v) => set({ logsExpanded: v })
+  setLogsExpanded: (v) => set({ logsExpanded: v }),
+  openNews: (id) => set({ newsItemId: id }),
+  openProject: (ref) => set({ projectRef: ref })
 }))

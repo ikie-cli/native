@@ -68,6 +68,22 @@ const MIGRATIONS: string[] = [
     version_number TEXT,
     PRIMARY KEY (instance_id, file_name, kind)
   );
+  `,
+  // v2 — cache the launchable (loader) version id so launches/validation skip
+  // re-resolving the loader against the network every time
+  `
+  ALTER TABLE instances ADD COLUMN resolved_version_id TEXT;
+  `,
+  // v3 — remember each installed project's icon so content lists can show it
+  `
+  ALTER TABLE content_index ADD COLUMN icon_url TEXT;
+  `,
+  // v4 — persisted mod-update checks: the newer compatible version (full
+  // ProjectVersion JSON, so applying it later needs no network) and when the
+  // file was last checked. Cached results keep the updates badge working offline.
+  `
+  ALTER TABLE content_index ADD COLUMN update_version_json TEXT;
+  ALTER TABLE content_index ADD COLUMN update_checked_at INTEGER;
   `
 ]
 

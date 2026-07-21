@@ -171,6 +171,14 @@ textarea {
   background: transparent;
 }
 
+/* Opt-in: fully hide the scrollbar while keeping the element scrollable. */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* Focus rings — accent, keyboard only */
 :focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -207,3 +215,73 @@ textarea {
 :root[data-theme='mono-light'] *:hover > .mono-media {
   filter: grayscale(0);
 }
+
+/* ---- Rich text (mod descriptions, news articles) ---- */
+.richtext {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+.richtext h1, .richtext h2, .richtext h3, .richtext h4, .richtext h5, .richtext h6 {
+  color: var(--text-primary);
+  font-weight: 700;
+  margin: 1.4em 0 0.5em;
+  line-height: 1.25;
+}
+.richtext h1 { font-size: 22px; }
+.richtext h2 { font-size: 18px; }
+.richtext h3 { font-size: 16px; }
+.richtext h4, .richtext h5, .richtext h6 { font-size: 14px; }
+.richtext > :first-child { margin-top: 0; }
+.richtext p { margin: 0.7em 0; }
+.richtext a { color: var(--accent); font-weight: 600; }
+.richtext a:hover { text-decoration: underline; }
+.richtext strong, .richtext b { color: var(--text-primary); }
+.richtext ul, .richtext ol { margin: 0.7em 0; padding-left: 1.5em; }
+.richtext ul { list-style: disc; }
+.richtext ol { list-style: decimal; }
+.richtext li { margin: 0.25em 0; }
+.richtext img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.75em 0; }
+.richtext hr { border: none; border-top: 1px solid var(--border-subtle); margin: 1.5em 0; }
+.richtext blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 0.9em 0;
+  padding: 0.35em 1em;
+  background: var(--surface-raised);
+  border-radius: 0 8px 8px 0;
+}
+.richtext code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  background: var(--surface-raised);
+  border-radius: 5px;
+  padding: 0.15em 0.4em;
+}
+.richtext pre {
+  background: var(--surface-raised);
+  border-radius: 10px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 0.9em 0;
+}
+.richtext pre code { background: none; padding: 0; }
+.richtext table {
+  border-collapse: collapse;
+  margin: 0.9em 0;
+  width: 100%;
+  font-size: 13px;
+}
+.richtext th, .richtext td {
+  border: 1px solid var(--border-subtle);
+  padding: 6px 10px;
+  text-align: left;
+}
+.richtext th { background: var(--surface-raised); color: var(--text-primary); }
+.richtext details {
+  background: var(--surface-raised);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0.9em 0;
+}
+.richtext summary { cursor: pointer; font-weight: 600; color: var(--text-primary); }

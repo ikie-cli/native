@@ -5,7 +5,7 @@ import { useModals } from '@/stores/nav'
 import { useAccounts, useToasts, toastError } from '@/stores/data'
 import { Modal } from '@/components/ui/modal'
 import { Button, Input, Spinner } from '@/components/ui/ui'
-import { PlayerHead } from '@/components/layout/RightSidebar'
+import { PlayerHead } from '@/components/PlayerHead'
 import { cn } from '@/lib/util'
 
 type Pane = 'list' | 'msa' | 'offline'
@@ -152,7 +152,7 @@ function AccountList({ setPane }: { setPane: (p: Pane) => void }): React.JSX.Ele
                 a.active ? 'border-accent bg-accent-tint' : 'border-transparent bg-surface-raised hover:bg-surface-hover'
               )}
             >
-              <PlayerHead name={a.username} size={40} />
+              <PlayerHead account={a} size={40} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-body font-bold text-content-primary">{a.username}</div>
                 <div className="text-small text-content-secondary">

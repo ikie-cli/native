@@ -1,13 +1,21 @@
 appId: app.nativelauncher.desktop
 productName: Native
-copyright: Copyright © 2026 Native Contributors
+copyright: Copyright © 2026 Native Labs
 directories:
   buildResources: build
   output: dist
+afterPack: scripts/after-pack.js
 files:
   - out/**
   - package.json
   - '!node_modules/**/{CHANGELOG.md,README.md,readme.md,test,__tests__,tests,powered-test,example,examples}'
+extraResources:
+  - from: resources/icon.png
+    to: icon.png
+  - from: resources/tray.png
+    to: tray.png
+  - from: build/icon.ico
+    to: icon.ico
 asarUnpack:
   - '**/*.node'
 npmRebuild: true
@@ -63,8 +71,8 @@ mac:
     - target: dmg
       arch: [arm64, x64]
 
+# Auto-update feed: served from our own domain (latest.yml / latest-linux*.yml
+# + artifacts live under website/updates/, deployed with the site).
 publish:
-  provider: github
-  owner: native-launcher
-  repo: native
-  releaseType: release
+  provider: generic
+  url: https://nativelaunch.xyz/updates

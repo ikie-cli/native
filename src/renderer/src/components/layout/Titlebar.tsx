@@ -6,6 +6,7 @@ import { useInstances, useRunning, toastError } from '@/stores/data'
 import { cn } from '@/lib/util'
 import { Tooltip } from '@/components/ui/tooltip'
 import { InstanceIcon } from '@/components/InstanceIcon'
+import iconUrl from '@/assets/icon.png'
 
 function crumbsFor(route: Route, instName: (id: string) => string): string[] {
   switch (route.name) {
@@ -16,9 +17,14 @@ function crumbsFor(route: Route, instName: (id: string) => string): string[] {
     case 'discover':
       return route.instanceId ? [instName(route.instanceId), 'Discover content'] : ['Discover content']
     case 'instance': {
-      const tab = { content: 'Content', worlds: 'Worlds', screenshots: 'Screenshots', logs: 'Logs', options: 'Options' }[
-        route.tab
-      ]
+      const tab = {
+        content: 'Content',
+        worlds: 'Worlds',
+        screenshots: 'Screenshots',
+        files: 'Files',
+        logs: 'Logs',
+        options: 'Options'
+      }[route.tab]
       return ['Library', instName(route.id), tab]
     }
     case 'servers':
@@ -26,21 +32,11 @@ function crumbsFor(route: Route, instName: (id: string) => string): string[] {
   }
 }
 
-/** The Native mark — same voxel-column N as the app icon, token-driven. */
+/** The Native mark — the real app icon next to the wordmark. */
 function Wordmark(): React.JSX.Element {
   return (
     <span className="flex items-center gap-2.5">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <rect x="1.5" y="1.5" width="21" height="21" rx="6.5" fill="var(--accent)" />
-        <g fill="var(--accent-contrast)">
-          <rect x="6.2" y="6" width="2.5" height="12" rx="0.6" />
-          <rect x="15.3" y="6" width="2.5" height="12" rx="0.6" />
-          <rect x="8.5" y="7.6" width="2.4" height="2.4" rx="0.5" />
-          <rect x="10.2" y="9.9" width="2.4" height="2.4" rx="0.5" />
-          <rect x="11.6" y="12.2" width="2.4" height="2.4" rx="0.5" />
-          <rect x="13.2" y="14.4" width="2.4" height="2.4" rx="0.5" />
-        </g>
-      </svg>
+      <img src={iconUrl} width={24} height={24} className="rounded-md2" alt="" draggable={false} />
       <span className="text-[16px] font-extrabold tracking-tight text-content-primary">
         Native
       </span>

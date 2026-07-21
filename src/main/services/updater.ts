@@ -4,9 +4,10 @@ import type { UpdaterState } from '@shared/types'
 import { log } from '../logger'
 
 /**
- * electron-updater integration (GitHub Releases feed via electron-builder
- * publish config). Checks on startup + every 4 hours; downloads silently in
- * the background when enabled; UI applies via quitAndInstall.
+ * electron-updater integration (generic feed at nativelaunch.xyz/updates via
+ * electron-builder publish config). Checks on startup + every 4 hours;
+ * downloads silently in the background when enabled; UI applies via
+ * quitAndInstall.
  *
  * Works with NSIS (Windows, delta via blockmaps) and AppImage (Linux).
  * .deb installs can't self-update — we surface 'unsupported' so the UI can
@@ -44,8 +45,11 @@ export class UpdaterService extends EventEmitter {
       autoUpdater.autoInstallOnAppQuit = true
       if (process.env.NATIVE_UPDATER_DEV) {
         // Test hook: dev builds read a generic-provider feed config. When the
-        // env var is a path, it points straight at the yml.
+        // env var is a path, it points straight at the yml. Dev builds report
+        // Electron's version, so real feed versions look like downgrades —
+        // allow them so tests can exercise the production feed.
         autoUpdater.forceDevUpdateConfig = true
+        autoUpdater.allowDowngrade = true
         if (process.env.NATIVE_UPDATER_DEV.includes('/')) {
           autoUpdater.updateConfigPath = process.env.NATIVE_UPDATER_DEV
         }

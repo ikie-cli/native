@@ -1,4 +1,4 @@
-import { BrowserWindow, app, nativeTheme, shell } from 'electron'
+import { BrowserWindow, Menu, Tray, app, nativeImage, nativeTheme, shell } from 'electron'
 import { join } from 'node:path'
 import { ensureDirs } from './paths'
 import { initLogger, log } from './logger'
@@ -21,6 +21,46 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   let win: BrowserWindow | null = null
+  // Held at module scope so the OS tray icon isn't garbage collected.
+  let tray: Tray | null = null
+
+  // Runtime assets live beside the app: bundled into resources/ when packaged,
+  // under <appPath>/resources/ in dev.
+  const resource = (name: string): string =>
+    app.isPackaged ? join(process.resourcesPath, name) : join(app.getAppPath(), 'resources', name)
+
+  const createTray = (): void => {
+    // CI has no tray support — skip entirely under E2E.
+    if (process.env.NATIVE_E2E === '1' || tray) return
+    // Windows renders tray icons crispest from the multi-size .ico; other
+    // platforms take the 32px PNG. Fall back to the window icon rather than
+    // ever showing an empty/default (Electron) glyph.
+    const candidates =
+      process.platform === 'win32'
+        ? [resource('icon.ico'), resource('tray.png'), resource('icon.png')]
+        : [resource('tray.png'), resource('icon.png')]
+    let image = nativeImage.createEmpty()
+    for (const path of candidates) {
+      image = nativeImage.createFromPath(path)
+      if (!image.isEmpty()) break
+    }
+    tray = new Tray(image)
+    tray.setToolTip('Native')
+    const showWindow = (): void => {
+      if (!win) return
+      if (win.isMinimized()) win.restore()
+      win.show()
+      win.focus()
+    }
+    tray.setContextMenu(
+      Menu.buildFromTemplate([
+        { label: 'Open Native', click: showWindow },
+        { type: 'separator' },
+        { label: 'Quit', click: () => app.quit() }
+      ])
+    )
+    tray.on('click', showWindow)
+  }
 
   app.on('second-instance', () => {
     if (win) {
@@ -41,6 +81,7 @@ if (!app.requestSingleInstanceLock()) {
       minHeight: 640,
       show: false,
       frame: false,
+      icon: resource('icon.png'),
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : undefined,
       backgroundColor: '#000000',
       webPreferences: {
@@ -80,6 +121,10 @@ if (!app.requestSingleInstanceLock()) {
     }
   }
 
+  // Windows ties taskbar/tray identity to the AppUserModelID; without it the
+  // taskbar groups under (and shows) the default Electron identity.
+  if (process.platform === 'win32') app.setAppUserModelId('app.nativelauncher.desktop')
+
   void app.whenReady().then(() => {
     ensureDirs()
     initLogger()
@@ -87,6 +132,7 @@ if (!app.requestSingleInstanceLock()) {
     nativeTheme.themeSource = 'dark' // chrome accents; app theme is CSS-variable driven
     log.info(`Native ${app.getVersion()} starting (${process.platform}/${process.arch})`)
     createWindow()
+    createTray()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

@@ -72,7 +72,21 @@ function makeNativeStub() {
       listLocal: vi.fn().mockResolvedValue([]),
       toggle: vi.fn().mockResolvedValue(undefined),
       removeLocal: vi.fn().mockResolvedValue(undefined),
-      addLocalFiles: vi.fn().mockResolvedValue(0)
+      addLocalFiles: vi.fn().mockResolvedValue(0),
+      updates: vi
+        .fn()
+        .mockResolvedValue({ instanceId: '', checkedAt: null, fromCache: false, updates: [] }),
+      checkUpdates: vi
+        .fn()
+        .mockResolvedValue({ instanceId: '', checkedAt: null, fromCache: false, updates: [] }),
+      applyUpdate: vi.fn().mockResolvedValue(undefined),
+      updateAll: vi.fn().mockResolvedValue({ applied: 0, failed: [] }),
+      onLocalChanged: listeners(),
+      onUpdatesChanged: listeners()
+    },
+    packs: {
+      installModrinth: vi.fn(),
+      importFile: vi.fn()
     },
     worlds: {
       list: vi.fn().mockResolvedValue([]),

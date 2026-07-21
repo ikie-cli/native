@@ -1,8 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowDownToLine, X } from 'lucide-react'
+import { useRef } from 'react'
 import { useDownloads } from '@/stores/data'
 import { ProgressBar } from '@/components/ui/ui'
 import { formatBytes, formatEta, formatSpeed } from '@/lib/util'
+
+/** Tasks shorter than this never show a card — quick fetches (loader profiles,
+ * small mods) already have inline feedback and would only flash the UI. */
+const SHOW_AFTER_MS = 1200
 
 /**
  * Floating download progress card (bottom of content area). Progress arrives
@@ -10,7 +15,21 @@ import { formatBytes, formatEta, formatSpeed } from '@/lib/util'
  */
 export function DownloadsIndicator(): React.JSX.Element {
   const tasks = useDownloads((s) => s.tasks)
-  const active = tasks.filter((t) => t.state === 'running')
+  const firstSeen = useRef(new Map<string, number>())
+
+  const now = Date.now()
+  const running = new Set(tasks.filter((t) => t.state === 'running').map((t) => t.id))
+  for (const id of running) {
+    if (!firstSeen.current.has(id)) firstSeen.current.set(id, now)
+  }
+  for (const id of [...firstSeen.current.keys()]) {
+    if (!running.has(id)) firstSeen.current.delete(id)
+  }
+  // Progress ticks at 10 Hz keep re-rendering this component, so a task
+  // naturally crosses the threshold without a timer.
+  const active = tasks.filter(
+    (t) => t.state === 'running' && now - (firstSeen.current.get(t.id) ?? now) >= SHOW_AFTER_MS
+  )
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-1/2 z-30 w-[480px] max-w-[90%] -translate-x-1/2">

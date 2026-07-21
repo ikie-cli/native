@@ -3,7 +3,7 @@ import { ChevronRight, Clock, MoreVertical, Play, Plus, Square } from 'lucide-re
 import { useMemo } from 'react'
 import type { InstanceConfig } from '@shared/types'
 import { LOADER_LABELS } from '@shared/types'
-import { useInstances, useNews, useRunning, toastError, useToasts } from '@/stores/data'
+import { useInstanceBusy, useInstances, useNews, useRunning, toastError, useToasts } from '@/stores/data'
 import { useModals, useNav } from '@/stores/nav'
 import { InstanceIcon } from '@/components/InstanceIcon'
 import { LoaderMark } from '@/components/LoaderMark'
@@ -24,6 +24,7 @@ function useLaunch(): (inst: InstanceConfig) => void {
 function JumpBackRow({ inst }: { inst: InstanceConfig }): React.JSX.Element {
   const { go } = useNav()
   const running = useRunning((s) => s.isRunning(inst.id))
+  const busy = useInstanceBusy(inst.id)
   const launch = useLaunch()
 
   return (
@@ -68,10 +69,11 @@ function JumpBackRow({ inst }: { inst: InstanceConfig }): React.JSX.Element {
             variant="secondary"
             icon={Play}
             onClick={() => launch(inst)}
+            disabled={busy}
             data-testid={`play-${inst.id}`}
             className="group-hover:bg-accent group-hover:text-accent-contrast"
           >
-            Play
+            {busy ? 'Downloading…' : 'Play'}
           </Button>
         )}
         <InstanceKebab inst={inst} />
@@ -129,6 +131,7 @@ export function InstanceKebab({ inst }: { inst: InstanceConfig }): React.JSX.Ele
 function DiscoverStrip(): React.JSX.Element {
   const { go } = useNav()
   const news = useNews((s) => s.items)
+  const openNews = useModals((s) => s.openNews)
   const imgs = news.filter((n) => n.image).slice(0, 3)
   if (imgs.length === 0) return <></>
   return (
@@ -144,7 +147,7 @@ function DiscoverStrip(): React.JSX.Element {
         {imgs.map((n) => (
           <button
             key={n.id}
-            onClick={() => void window.native.app.openExternal(n.url)}
+            onClick={() => openNews(n.id)}
             className="group aspect-[16/9] overflow-hidden rounded-card bg-surface-raised"
           >
             <img

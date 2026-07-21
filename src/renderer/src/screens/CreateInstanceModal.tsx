@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, ChevronDown, ImagePlus, Package, Search, X } from 'lucide-react'
+import { Check, ChevronDown, FileUp, ImagePlus, Package, Search, X } from 'lucide-react'
 import type { LoaderKind } from '@shared/types'
 import { LOADER_LABELS } from '@shared/types'
 import { useModals, useNav } from '@/stores/nav'
@@ -262,6 +262,34 @@ export function CreateInstanceModal(): React.JSX.Element {
     }
   }
 
+  // Import a local Modrinth pack — works offline for packs whose content
+  // ships in overrides; packs with a download list need the network.
+  const importPack = async (): Promise<void> => {
+    const picked = await window.native.app.pickFile({
+      title: 'Import a Modrinth modpack',
+      filters: [{ name: 'Modrinth modpack', extensions: ['mrpack'] }]
+    })
+    if (picked.length === 0) return
+    setBusy(true)
+    try {
+      push({ kind: 'info', title: 'Importing modpack…' })
+      const res = await window.native.packs.importFile(picked[0])
+      await refresh()
+      setOpen(false)
+      reset()
+      push({
+        kind: 'success',
+        title: `Imported ${res.instance.name}`,
+        detail: res.warnings[0] ?? undefined
+      })
+      go({ name: 'instance', id: res.instance.id, tab: 'content' })
+    } catch (err) {
+      toastError(err, "Couldn't import modpack")
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const create = async (): Promise<void> => {
     if (!name.trim() || !mcVersion) return
     setBusy(true)
@@ -299,6 +327,16 @@ export function CreateInstanceModal(): React.JSX.Element {
       bodyClassName="p-0"
       footer={
         <>
+          <Button
+            variant="ghost"
+            icon={FileUp}
+            onClick={() => void importPack()}
+            disabled={busy}
+            className="mr-auto"
+            data-testid="import-mrpack"
+          >
+            Import .mrpack
+          </Button>
           <Button variant="ghost" onClick={() => setOpen(false)}>
             Cancel
           </Button>

@@ -35,6 +35,8 @@ export interface InstanceConfig {
   /** true once install finished & validated */
   installed: boolean
   notes: string
+  /** cached launchable version id (loader profile); null until first resolve */
+  resolvedVersionId: string | null
 }
 
 export type InstanceCreate = Pick<InstanceConfig, 'name' | 'mcVersion' | 'loader'> &
@@ -147,6 +149,32 @@ export interface ServerStatus {
   error?: string
 }
 
+/** Full project page data for the mod detail view. */
+export interface ProjectDetails {
+  platform: 'modrinth' | 'curseforge'
+  projectId: string
+  /** modrinth project_type when known (mod/modpack/resourcepack/shader); null on CurseForge */
+  projectType: string | null
+  slug: string
+  title: string
+  summary: string
+  /** Long-form description: markdown (Modrinth) or sanitized-later HTML (CurseForge). */
+  body: string
+  bodyFormat: 'markdown' | 'html'
+  icon: string | null
+  author: string
+  downloads: number
+  follows: number
+  updated: string
+  published: string
+  categories: string[]
+  gallery: string[]
+  links: { website: string | null; source: string | null; issues: string | null; wiki: string | null }
+  license: string | null
+  clientSide: string | null
+  serverSide: string | null
+}
+
 export interface NewsItem {
   id: string
   title: string
@@ -165,6 +193,17 @@ export interface JavaInstall {
   source: 'system' | 'managed' | 'custom'
 }
 
+/** Sent to the renderer when a launch needs a Java runtime that isn't installed. */
+export interface JavaDownloadRequest {
+  requestId: string
+  major: number
+  /** Full Temurin version that would be installed, e.g. "21.0.5+11" */
+  javaVersion: string
+  sizeBytes: number
+  instanceName: string | null
+  mcVersion: string | null
+}
+
 export interface WorldInfo {
   folder: string
   name: string
@@ -180,6 +219,13 @@ export interface ScreenshotInfo {
   mtime: number
 }
 
+export interface FileEntry {
+  name: string
+  dir: boolean
+  size: number
+  mtimeMs: number
+}
+
 export type ContentKind = 'mod' | 'resourcepack' | 'shaderpack'
 
 export interface LocalContentFile {
@@ -188,12 +234,50 @@ export interface LocalContentFile {
   enabled: boolean
   sizeBytes: number
   mtime: number
+  /** data URL from the local project-icon cache; null when not cached */
+  icon: string | null
   meta: {
     name?: string
     version?: string
     description?: string
     projectId?: string | null
+    platform?: 'modrinth' | 'curseforge'
   } | null
+  /** newer compatible version from the last update check; null = up to date/unknown */
+  update: { versionId: string; versionNumber: string } | null
+}
+
+/** One file with a newer compatible version available. */
+export interface ContentUpdateInfo {
+  instanceId: string
+  kind: ContentKind
+  fileName: string
+  projectId: string
+  platform: 'modrinth' | 'curseforge'
+  displayName: string
+  installedVersion: string | null
+  newVersionId: string
+  newVersionNumber: string
+}
+
+/**
+ * Update-check state for an instance. Results are persisted, so this is
+ * available offline; `fromCache` marks a check that couldn't reach the
+ * network and fell back entirely to the stored results.
+ */
+export interface ContentUpdatesResult {
+  instanceId: string
+  /** newest successful per-file check; null = never checked */
+  checkedAt: number | null
+  fromCache: boolean
+  updates: ContentUpdateInfo[]
+}
+
+export interface ModpackInstallResult {
+  instance: InstanceConfig
+  filesTotal: number
+  overridesApplied: boolean
+  warnings: string[]
 }
 
 export type ProjectType = 'mod' | 'modpack' | 'resourcepack' | 'shader' | 'datapack'
@@ -247,9 +331,10 @@ export interface AppSettings {
   launchBehavior: 'keep-open' | 'minimize' | 'close'
   concurrentDownloads: number
   msaClientId: string | null
-  curseforgeApiKey: string | null
   autoUpdateCheck: boolean
   autoUpdateDownload: boolean
+  /** First-run guided tour: flips true once finished or skipped. */
+  onboardingDone: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -263,9 +348,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   launchBehavior: 'keep-open',
   concurrentDownloads: 8,
   msaClientId: null,
-  curseforgeApiKey: null,
   autoUpdateCheck: true,
-  autoUpdateDownload: true
+  autoUpdateDownload: true,
+  onboardingDone: false
 }
 
 export interface UpdateProgress {

@@ -3,11 +3,11 @@ import { LayoutGrid, List, Play, Plus, Search, Square } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { InstanceConfig, LoaderKind } from '@shared/types'
 import { LOADER_LABELS } from '@shared/types'
-import { useInstances, useRunning, useToasts, toastError } from '@/stores/data'
+import { useInstanceBusy, useInstances, useRunning, useToasts, toastError } from '@/stores/data'
 import { useModals, useNav } from '@/stores/nav'
 import { InstanceIcon } from '@/components/InstanceIcon'
 import { LoaderMark } from '@/components/LoaderMark'
-import { Button, Chip, EmptyState, IconButton, SearchInput } from '@/components/ui/ui'
+import { Button, Chip, EmptyState, IconButton, SearchInput, Spinner } from '@/components/ui/ui'
 import { Select } from '@/components/ui/menu'
 import { InstanceKebab } from '@/screens/Home'
 import { cn, formatPlaytime, timeAgo } from '@/lib/util'
@@ -17,9 +17,11 @@ type SortKey = 'recent' | 'name' | 'played'
 function InstanceCard({ inst }: { inst: InstanceConfig }): React.JSX.Element {
   const { go } = useNav()
   const running = useRunning((s) => s.isRunning(inst.id))
+  const busy = useInstanceBusy(inst.id)
   const push = useToasts((s) => s.push)
 
   const launch = (): void => {
+    if (busy) return
     push({ kind: 'info', title: `Launching ${inst.name}…` })
     window.native.instances.launch(inst.id).catch((err) => toastError(err, `Couldn't launch ${inst.name}`))
   }
@@ -45,7 +47,7 @@ function InstanceCard({ inst }: { inst: InstanceConfig }): React.JSX.Element {
           }}
         >
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-contrast shadow-lg">
-            {running ? <Square size={24} /> : <Play size={24} className="ml-0.5" />}
+            {running ? <Square size={24} /> : busy ? <Spinner size={24} /> : <Play size={24} className="ml-0.5" />}
           </div>
         </motion.div>
         {running && (
@@ -79,8 +81,10 @@ function InstanceCard({ inst }: { inst: InstanceConfig }): React.JSX.Element {
 function InstanceRow({ inst }: { inst: InstanceConfig }): React.JSX.Element {
   const { go } = useNav()
   const running = useRunning((s) => s.isRunning(inst.id))
+  const busy = useInstanceBusy(inst.id)
   const push = useToasts((s) => s.push)
   const launch = (): void => {
+    if (busy) return
     push({ kind: 'info', title: `Launching ${inst.name}…` })
     window.native.instances.launch(inst.id).catch((err) => toastError(err, `Couldn't launch ${inst.name}`))
   }

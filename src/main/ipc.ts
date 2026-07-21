@@ -1,7 +1,13 @@
 import { BrowserWindow, app, dialog, ipcMain, safeStorage, shell } from 'electron'
 import os from 'node:os'
 import { IPC } from '@shared/ipc'
-import type { AppSettings, ContentKind, InstanceCreate, ProjectVersion } from '@shared/types'
+import type {
+  AppSettings,
+  ContentKind,
+  InstanceCreate,
+  JavaDownloadRequest,
+  ProjectVersion
+} from '@shared/types'
 import { openDb } from './db'
 import { paths } from './paths'
 import { SettingsService } from './services/settings'
@@ -9,9 +15,11 @@ import { AccountsService, plainTokenCrypto, type TokenCrypto } from './services/
 import { createMsmcClient } from './services/msmc'
 import { InstancesService } from './services/instances'
 import { ContentService, type SearchQuery } from './services/content'
+import { ModpacksService } from './services/modpacks'
 import { ServersService, pingServer } from './services/servers'
 import { WorldsService } from './services/worlds'
 import { ScreenshotsService } from './services/screenshots'
+import { FilesService } from './services/files'
 import { IconsService } from './services/icons'
 import { fetchNews } from './services/news'
 import { UpdaterService } from './services/updater'
@@ -22,12 +30,18 @@ import { listLoaderVersions } from './core/loaders'
 import { detectJavas, downloadJava, probeJava } from './core/java'
 import { log } from './logger'
 
+// Built-in CurseForge API key (ships with the app; overridable for dev/CI).
+const CURSEFORGE_API_KEY =
+  process.env.NATIVE_CF_API_KEY ?? '$2a$10$uUiUIGgW7zoLg2niyP3p/.5ChxQPf2rpz03vxXzfEeDBaJNQVLymS'
+
 export interface Services {
   settings: SettingsService
   accounts: AccountsService
   instances: InstancesService
   launcher: LaunchManager
   updater: UpdaterService
+  /** Swapped for a renderer-backed dialog in registerIpc; auto-approves headless. */
+  javaConfirm: { handler: (req: Omit<JavaDownloadRequest, 'requestId'>) => Promise<boolean> }
 }
 
 export function buildServices(): Services {
@@ -53,24 +67,29 @@ export function buildServices(): Services {
     const s = settings.get()
     return { memMin: s.defaultMemMin, memMax: s.defaultMemMax }
   })
+  const javaConfirm: Services['javaConfirm'] = { handler: async () => true }
   const launcher = new LaunchManager({
     resolveVersionId: (inst) => instances.resolveVersionId(inst),
+    peekVersionId: (inst) => instances.peekVersionId(inst),
     account: () => accounts.launchAccount(),
     concurrency: () => settings.get().concurrentDownloads,
-    onPlaytime: (id, s, e) => instances.recordPlaytime(id, s, e)
+    onPlaytime: (id, s, e) => instances.recordPlaytime(id, s, e),
+    confirmJavaDownload: (req) => javaConfirm.handler(req)
   })
   const updater = new UpdaterService()
-  return { settings, accounts, instances, launcher, updater }
+  return { settings, accounts, instances, launcher, updater, javaConfirm }
 }
 
 export function registerIpc(win: BrowserWindow, services: Services): void {
   const db = openDb()
   const { settings, accounts, instances, launcher, updater } = services
-  const content = new ContentService(db, () => settings.get().curseforgeApiKey)
+  const content = new ContentService(db, () => CURSEFORGE_API_KEY)
   const servers = new ServersService(db)
+  const icons = new IconsService()
+  const modpacks = new ModpacksService(db, instances, icons)
   const worlds = new WorldsService()
   const screenshots = new ScreenshotsService()
-  const icons = new IconsService()
+  const files = new FilesService()
 
   const send = (channel: string, ...args: unknown[]): void => {
     if (!win.isDestroyed()) win.webContents.send(channel, ...args)
@@ -199,6 +218,9 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
 
   // ---------- content ----------
   ipcMain.handle(IPC.content.search, (_e, q: SearchQuery) => content.search(q))
+  ipcMain.handle(IPC.content.project, (_e, platform: 'modrinth' | 'curseforge', projectId: string) =>
+    content.project(platform, projectId)
+  )
   ipcMain.handle(IPC.content.versions, (_e, platform, projectId, mc, loader) =>
     content.versions(platform, projectId, mc, loader)
   )
@@ -215,30 +237,82 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
         displayName: string
         mcVersion?: string | null
         loader?: string | null
+        iconUrl?: string | null
       }
-    ) =>
-      content.install(
-        args.instanceId,
-        args.platform,
-        args.projectId,
-        args.version,
-        args.kind,
-        args.displayName,
-        args.mcVersion,
-        args.loader
-      )
+    ) => {
+      return content
+        .install(
+          args.instanceId,
+          args.platform,
+          args.projectId,
+          args.version,
+          args.kind,
+          args.displayName,
+          args.mcVersion,
+          args.loader,
+          args.iconUrl
+        )
+        .then(() => send(IPC.content.onLocalChanged, args.instanceId))
+    }
   )
   ipcMain.handle(IPC.content.listLocal, (_e, instanceId: string, kind: ContentKind) =>
     content.listLocal(instanceId, kind)
   )
+  ipcMain.handle(IPC.content.installedProjects, (_e, instanceId: string) =>
+    content.installedProjectIds(instanceId)
+  )
   ipcMain.handle(IPC.content.toggle, (_e, instanceId, kind, fileName, enabled) =>
     content.toggle(instanceId, kind, fileName, enabled)
   )
-  ipcMain.handle(IPC.content.removeLocal, (_e, instanceId, kind, fileName) =>
-    content.removeLocal(instanceId, kind, fileName)
-  )
+  ipcMain.handle(IPC.content.removeLocal, async (_e, instanceId, kind, fileName) => {
+    await content.removeLocal(instanceId, kind, fileName)
+    send(IPC.content.onLocalChanged, instanceId)
+  })
   ipcMain.handle(IPC.content.addLocalFiles, (_e, instanceId, kind, files) =>
     content.addLocalFiles(instanceId, kind, files)
+  )
+
+  // ---------- content updates ----------
+  // mc version + loader come from the instance record, never the renderer.
+  const updateContext = (instanceId: string): { mc: string; loader: string | null } => {
+    const inst = instances.get(instanceId)
+    if (!inst) throw new Error('Instance not found')
+    return { mc: inst.mcVersion, loader: inst.loader === 'vanilla' ? null : inst.loader }
+  }
+  ipcMain.handle(IPC.content.updates, (_e, instanceId: string) => content.updates(instanceId))
+  ipcMain.handle(IPC.content.checkUpdates, async (_e, instanceId: string) => {
+    const ctx = updateContext(instanceId)
+    const res = await content.checkUpdates(instanceId, ctx.mc, ctx.loader)
+    send(IPC.content.onUpdatesChanged, instanceId, res)
+    return res
+  })
+  ipcMain.handle(
+    IPC.content.applyUpdate,
+    async (_e, instanceId: string, kind: ContentKind, fileName: string) => {
+      const ctx = updateContext(instanceId)
+      await content.applyUpdate(instanceId, kind, fileName, ctx.mc, ctx.loader)
+      send(IPC.content.onLocalChanged, instanceId)
+      send(IPC.content.onUpdatesChanged, instanceId, await content.updates(instanceId))
+    }
+  )
+  ipcMain.handle(IPC.content.updateAll, async (_e, instanceId: string) => {
+    const ctx = updateContext(instanceId)
+    const res = await content.updateAll(instanceId, ctx.mc, ctx.loader)
+    send(IPC.content.onLocalChanged, instanceId)
+    send(IPC.content.onUpdatesChanged, instanceId, await content.updates(instanceId))
+    return res
+  })
+
+  // ---------- modpacks ----------
+  ipcMain.handle(
+    IPC.packs.installModrinth,
+    (
+      _e,
+      args: { projectId: string; version: ProjectVersion; displayName: string; iconUrl?: string | null }
+    ) => modpacks.installModrinth(args, settings.get().concurrentDownloads)
+  )
+  ipcMain.handle(IPC.packs.importFile, (_e, filePath: string) =>
+    modpacks.importFile(filePath, settings.get().concurrentDownloads)
   )
 
   // ---------- worlds / screenshots ----------
@@ -249,6 +323,17 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   ipcMain.handle(IPC.screenshots.data, (_e, id: string, name: string) => screenshots.data(id, name))
   ipcMain.handle(IPC.screenshots.remove, (_e, id: string, name: string) =>
     screenshots.remove(id, name)
+  )
+
+  // ---------- instance files ----------
+  ipcMain.handle(IPC.files.list, (_e, id: string, relPath: string) => files.list(id, relPath))
+  ipcMain.handle(IPC.files.openPath, (_e, id: string, relPath: string) =>
+    files.openPath(id, relPath)
+  )
+  ipcMain.handle(IPC.files.reveal, (_e, id: string, relPath: string) => files.reveal(id, relPath))
+  ipcMain.handle(IPC.files.delete, (_e, id: string, relPath: string) => files.delete(id, relPath))
+  ipcMain.handle(IPC.files.readText, (_e, id: string, relPath: string, maxBytes?: number) =>
+    files.readText(id, relPath, maxBytes)
   )
 
   // ---------- servers ----------
@@ -290,6 +375,31 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   ipcMain.handle(IPC.icons.data, (_e, ref: string) => icons.data(ref))
 
   // ---------- java ----------
+  {
+    // Launch pauses on a pending ask until the renderer answers (or times out → deny).
+    let askSeq = 0
+    const pendingAsks = new Map<string, (ok: boolean) => void>()
+    services.javaConfirm.handler = (req) =>
+      new Promise<boolean>((resolve) => {
+        if (win.isDestroyed()) return resolve(false)
+        const requestId = `java-ask-${++askSeq}`
+        pendingAsks.set(requestId, resolve)
+        if (!win.isVisible()) win.show()
+        send(IPC.java.onAskDownload, { requestId, ...req } satisfies JavaDownloadRequest)
+        setTimeout(() => {
+          const pending = pendingAsks.get(requestId)
+          if (pending) {
+            pendingAsks.delete(requestId)
+            pending(false)
+          }
+        }, 300_000).unref?.()
+      })
+    ipcMain.handle(IPC.java.answerDownload, (_e, requestId: string, accepted: boolean) => {
+      const pending = pendingAsks.get(requestId)
+      pendingAsks.delete(requestId)
+      pending?.(accepted === true)
+    })
+  }
   ipcMain.handle(IPC.java.list, () => detectJavas())
   ipcMain.handle(IPC.java.detect, () => detectJavas())
   ipcMain.handle(IPC.java.test, (_e, path: string) => probeJava(path))

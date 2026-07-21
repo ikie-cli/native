@@ -12,7 +12,8 @@ import type {
 } from '@shared/types'
 import { buildCommand, normalizeMemory, type LaunchAccount } from './args'
 import { installVersion, ruleCtx, validateFiles } from './install'
-import { ensureJava, guessJavaMajor, probeJava } from './java'
+import { ensureJava, guessJavaMajor, probeJava, type JavaDownloadConfirm } from './java'
+import { resolveVersionJson } from './manifest'
 import { DownloadManager } from './download'
 import { paths } from '../paths'
 import { ensureDir, exists } from '../utils/fsx'
@@ -24,9 +25,19 @@ const APP_VERSION = process.env.npm_package_version ?? '0.1.0'
 
 export interface LaunchDeps {
   resolveVersionId: (inst: InstanceConfig) => Promise<string>
+  /** Read-only variant: resolved id if installed locally, else null. Never downloads. */
+  peekVersionId: (inst: InstanceConfig) => Promise<string | null>
   account: () => Promise<LaunchAccount>
   concurrency: () => number
   onPlaytime: (instanceId: string, startedAt: number, endedAt: number) => void
+  /** Ask the user before downloading a Java runtime. Resolve false to abort the launch. */
+  confirmJavaDownload: (req: {
+    major: number
+    javaVersion: string
+    sizeBytes: number
+    instanceName: string
+    mcVersion: string
+  }) => Promise<boolean>
 }
 
 interface RunningEntry {
@@ -41,6 +52,7 @@ interface RunningEntry {
  */
 export class LaunchManager extends EventEmitter {
   private running = new Map<string, RunningEntry>()
+  private preparing = new Set<string>()
 
   constructor(private deps: LaunchDeps) {
     super()
@@ -68,25 +80,27 @@ export class LaunchManager extends EventEmitter {
     return true
   }
 
-  /** Pre-launch validation: java, files, disk space, memory sanity. */
+  /**
+   * Pre-launch validation: java, files, disk space, memory sanity.
+   * Read-only — never downloads anything or shows progress UI. When the
+   * loader isn't installed yet, java requirements fall back to a heuristic
+   * and the real check happens during launch.
+   */
   async validate(inst: InstanceConfig, javaOverride: string | null): Promise<LaunchValidation> {
     const problems: LaunchValidation['problems'] = []
     let javaPath: string | null = null
     let majorNeeded = guessJavaMajor(inst.mcVersion)
 
-    let versionId: string
+    let versionId = inst.mcVersion
     try {
-      versionId = await this.deps.resolveVersionId(inst)
-      const { resolveVersionJson } = await import('./manifest')
-      const vjson = await resolveVersionJson(versionId)
-      majorNeeded = vjson.javaVersion?.majorVersion ?? majorNeeded
-    } catch (err) {
-      problems.push({
-        severity: 'error',
-        code: 'version',
-        message: `Version metadata unavailable: ${err instanceof Error ? err.message : err}`
-      })
-      versionId = inst.mcVersion
+      const peeked = await this.deps.peekVersionId(inst)
+      if (peeked) {
+        versionId = peeked
+        const vjson = await resolveVersionJson(versionId)
+        majorNeeded = vjson.javaVersion?.majorVersion ?? majorNeeded
+      }
+    } catch {
+      /* metadata unreadable — heuristic major stands, launch re-checks */
     }
 
     const javaCandidate = inst.javaPath ?? javaOverride ?? process.env.NATIVE_JAVA_BIN ?? null
@@ -170,21 +184,54 @@ export class LaunchManager extends EventEmitter {
     }
   ): Promise<RunningGame> {
     if (this.running.has(inst.id)) throw new Error(`${inst.name} is already running`)
+    if (this.preparing.has(inst.id)) {
+      throw new Error(`${inst.name} is already starting — wait for its download to finish`)
+    }
+    // A manual install kicked off from the UI owns the same files; launching on
+    // top of it would download them twice concurrently.
+    for (const prefix of ['install', 'loader']) {
+      if (DownloadManager.get(`${prefix}:${inst.id}`)?.state === 'running') {
+        throw new Error(`${inst.name} is still downloading — try again when the install finishes`)
+      }
+    }
 
+    this.preparing.add(inst.id)
     const task = DownloadManager.createTask(`launch:${inst.id}`, {
       label: inst.name,
       phase: 'prepare'
     })
     try {
       const versionId = await this.deps.resolveVersionId(inst)
+
+      // Settle Java before the (potentially huge) asset download: read the
+      // required major from the version metadata, and if a download is needed,
+      // ask the user first so declining costs nothing.
+      let majorNeeded = guessJavaMajor(inst.mcVersion)
+      try {
+        const vjson = await resolveVersionJson(versionId)
+        majorNeeded = vjson.javaVersion?.majorVersion ?? majorNeeded
+      } catch {
+        /* metadata unavailable — re-checked against the installed json below */
+      }
+      const javaOverride = inst.javaPath ?? opts.javaOverride ?? process.env.NATIVE_JAVA_BIN ?? null
+      let approved = false
+      const confirm: JavaDownloadConfirm = async (info) => {
+        if (approved) return true
+        approved = await this.deps.confirmJavaDownload({
+          ...info,
+          instanceName: inst.name,
+          mcVersion: inst.mcVersion
+        })
+        return approved
+      }
+      let javaPath = await ensureJava(majorNeeded, javaOverride, task, confirm)
+
       const prepared = await installVersion(versionId, task, this.deps.concurrency())
 
-      const majorNeeded = prepared.json.javaVersion?.majorVersion ?? guessJavaMajor(inst.mcVersion)
-      const javaPath = await ensureJava(
-        majorNeeded,
-        inst.javaPath ?? opts.javaOverride ?? process.env.NATIVE_JAVA_BIN ?? null,
-        task
-      )
+      const exactMajor = prepared.json.javaVersion?.majorVersion ?? majorNeeded
+      if (exactMajor !== majorNeeded) {
+        javaPath = await ensureJava(exactMajor, javaOverride, task, confirm)
+      }
 
       const gameDir = paths.instanceGameDir(inst.id)
       await ensureDir(gameDir)
@@ -264,6 +311,8 @@ export class LaunchManager extends EventEmitter {
     } catch (err) {
       task.fail(err)
       throw err
+    } finally {
+      this.preparing.delete(inst.id)
     }
   }
 

@@ -26,6 +26,9 @@ export async function launchApp(opts: LaunchOpts = {}): Promise<LaunchedApp> {
     ...(process.env as Record<string, string>),
     NATIVE_DATA_DIR: dataDir,
     NATIVE_E2E: '1',
+    // Point avatars at an unreachable host so fetches fail instantly and the
+    // deterministic FallbackHead renders — keeps hermetic runs offline-safe.
+    NATIVE_AVATAR_BASE: 'http://127.0.0.1:1',
     ...opts.env
   }
   if (opts.seed) {

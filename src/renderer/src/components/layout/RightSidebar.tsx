@@ -3,6 +3,7 @@ import { useAccounts, useNews } from '@/stores/data'
 import { useModals } from '@/stores/nav'
 import { timeAgo } from '@/lib/util'
 import { Spinner } from '@/components/ui/ui'
+import { PlayerHead } from '@/components/PlayerHead'
 
 function PlayingAs(): React.JSX.Element {
   const accounts = useAccounts((s) => s.accounts)
@@ -17,7 +18,7 @@ function PlayingAs(): React.JSX.Element {
           onClick={() => setAccountsOpen(true)}
           className="flex w-full items-center gap-3 rounded-md2 bg-surface-raised p-3 text-left transition-colors duration-fast hover:bg-surface-hover"
         >
-          <PlayerHead name={active.username} size={36} />
+          <PlayerHead account={active} size={36} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-body font-bold text-content-primary">{active.username}</div>
             <div className="text-small text-content-secondary">
@@ -38,40 +39,9 @@ function PlayingAs(): React.JSX.Element {
   )
 }
 
-/** Deterministic pixel-face avatar (no network) in Minecraft-head style. */
-export function PlayerHead({ name, size = 32 }: { name: string; size?: number }): React.JSX.Element {
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0
-  const hue = Math.abs(h) % 360
-  const skin = `hsl(${25 + (Math.abs(h) % 20)} ${45 + (Math.abs(h >> 3) % 20)}% ${55 + (Math.abs(h >> 5) % 15)}%)`
-  const hair = `hsl(${hue} 35% 25%)`
-  const eye = `hsl(${(hue + 180) % 360} 60% 45%)`
-  const px = size / 8
-  return (
-    <div
-      className="relative shrink-0 overflow-hidden rounded-sm2"
-      style={{ width: size, height: size, background: skin, imageRendering: 'pixelated' }}
-      aria-hidden
-    >
-      <div style={{ position: 'absolute', inset: 0, height: px * 2.4, background: hair }} />
-      <div style={{ position: 'absolute', left: px, top: px * 3.6, width: px * 1.3, height: px * 1.3, background: eye }} />
-      <div style={{ position: 'absolute', right: px, top: px * 3.6, width: px * 1.3, height: px * 1.3, background: eye }} />
-      <div
-        style={{
-          position: 'absolute',
-          left: px * 3,
-          bottom: px * 1.2,
-          width: px * 2,
-          height: px,
-          background: `hsl(${25 + (Math.abs(h) % 20)} 40% 40%)`
-        }}
-      />
-    </div>
-  )
-}
-
 function NewsPanel(): React.JSX.Element {
   const { items, loaded, error } = useNews()
+  const openNews = useModals((s) => s.openNews)
   return (
     <section className="min-h-0 flex-1 overflow-y-auto p-4">
       <h3 className="mb-3 text-h3 text-content-primary">News</h3>
@@ -90,7 +60,7 @@ function NewsPanel(): React.JSX.Element {
         {items.slice(0, 8).map((n) => (
           <button
             key={n.id}
-            onClick={() => void window.native.app.openExternal(n.url)}
+            onClick={() => openNews(n.id)}
             className="group overflow-hidden rounded-md2 bg-surface-raised text-left transition-colors duration-fast hover:bg-surface-hover"
           >
             {n.image && (

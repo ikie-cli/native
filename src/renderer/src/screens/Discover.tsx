@@ -9,14 +9,16 @@ import type {
   SearchResult
 } from '@shared/types'
 import { useInstances, useToasts, toastError } from '@/stores/data'
+import { useModals, useNav } from '@/stores/nav'
 import { Button, EmptyState, SearchInput, Spinner } from '@/components/ui/ui'
 import { PillTabs } from '@/components/ui/tabs'
 import { Select } from '@/components/ui/menu'
 import { formatCount, timeAgo } from '@/lib/util'
-import { Boxes, Package, Sparkles } from 'lucide-react'
+import { Boxes, Layers, Package, Sparkles } from 'lucide-react'
 
 const TYPE_TABS = [
   { id: 'mod' as const, label: 'Mods', icon: Package },
+  { id: 'modpack' as const, label: 'Modpacks', icon: Layers },
   { id: 'resourcepack' as const, label: 'Resource Packs', icon: Boxes },
   { id: 'shader' as const, label: 'Shaders', icon: Sparkles }
 ]
@@ -32,13 +34,25 @@ function useDebounced<T>(value: T, ms: number): T {
 
 function InstallButton({
   hit,
-  instance
+  instance,
+  installed,
+  onInstalled
 }: {
   hit: SearchHit
   instance: InstanceConfig | null
+  installed: boolean
+  onInstalled: (projectId: string) => void
 }): React.JSX.Element {
   const push = useToasts((s) => s.push)
   const [state, setState] = useState<'idle' | 'loading' | 'done'>('idle')
+
+  if (installed && state === 'idle') {
+    return (
+      <Button size="sm" variant="outline" icon={Check} disabled data-testid={`install-${hit.projectId}`}>
+        Installed
+      </Button>
+    )
+  }
 
   const install = async (): Promise<void> => {
     if (!instance) {
@@ -73,11 +87,12 @@ function InstallButton({
         kind,
         displayName: hit.title,
         mcVersion: instance.mcVersion,
-        loader
+        loader,
+        iconUrl: hit.icon
       })
       setState('done')
+      onInstalled(hit.projectId)
       push({ kind: 'success', title: `Installed ${hit.title}`, detail: `Added to ${instance.name}` })
-      setTimeout(() => setState('idle'), 2000)
     } catch (err) {
       toastError(err, `Couldn't install ${hit.title}`)
       setState('idle')
@@ -98,7 +113,68 @@ function InstallButton({
   )
 }
 
-function HitCard({ hit, instance }: { hit: SearchHit; instance: InstanceConfig | null }): React.JSX.Element {
+/** Modpacks install as a brand-new instance (Modrinth .mrpack). */
+function InstallPackButton({ hit }: { hit: SearchHit }): React.JSX.Element {
+  const push = useToasts((s) => s.push)
+  const { go } = useNav()
+  const [state, setState] = useState<'idle' | 'loading' | 'done'>('idle')
+
+  const install = async (): Promise<void> => {
+    setState('loading')
+    try {
+      const versions = await window.native.content.versions('modrinth', hit.projectId, null, null)
+      const version: ProjectVersion | undefined = versions[0]
+      if (!version) {
+        push({ kind: 'error', title: 'No installable version', detail: `${hit.title} has no pack files.` })
+        setState('idle')
+        return
+      }
+      push({ kind: 'info', title: `Installing ${hit.title}…`, detail: 'Creating a new instance' })
+      const res = await window.native.packs.installModrinth({
+        projectId: hit.projectId,
+        version,
+        displayName: hit.title,
+        iconUrl: hit.icon
+      })
+      setState('done')
+      push({
+        kind: 'success',
+        title: `Installed ${hit.title}`,
+        detail: `Created instance ${res.instance.name}`
+      })
+      go({ name: 'instance', id: res.instance.id, tab: 'content' })
+    } catch (err) {
+      toastError(err, `Couldn't install ${hit.title}`)
+      setState('idle')
+    }
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant={state === 'done' ? 'outline' : 'secondary'}
+      icon={state === 'loading' ? undefined : state === 'done' ? Check : Download}
+      onClick={install}
+      disabled={state !== 'idle'}
+      data-testid={`install-${hit.projectId}`}
+    >
+      {state === 'loading' ? <Spinner size={16} /> : state === 'done' ? 'Installed' : 'Install'}
+    </Button>
+  )
+}
+
+function HitCard({
+  hit,
+  instance,
+  installed,
+  onInstalled
+}: {
+  hit: SearchHit
+  instance: InstanceConfig | null
+  installed: boolean
+  onInstalled: (projectId: string) => void
+}): React.JSX.Element {
+  const openProject = useModals((s) => s.openProject)
   return (
     <motion.div
       layout
@@ -122,18 +198,23 @@ function HitCard({ hit, instance }: { hit: SearchHit; instance: InstanceConfig |
             <button
               className="truncate text-body font-bold text-content-primary hover:text-accent"
               onClick={() =>
-                void window.native.app.openExternal(
-                  hit.platform === 'modrinth'
-                    ? `https://modrinth.com/${hit.type}/${hit.slug}`
-                    : `https://www.curseforge.com/minecraft/${hit.slug}`
-                )
+                openProject({
+                  platform: hit.platform,
+                  projectId: hit.projectId,
+                  instanceId: instance?.id ?? null
+                })
               }
+              data-testid={`open-project-${hit.projectId}`}
             >
               {hit.title}
             </button>
             <span className="ml-2 text-tiny text-content-muted">by {hit.author}</span>
           </div>
-          <InstallButton hit={hit} instance={instance} />
+          {hit.type === 'modpack' ? (
+            <InstallPackButton hit={hit} />
+          ) : (
+            <InstallButton hit={hit} instance={instance} installed={installed} onInstalled={onInstalled} />
+          )}
         </div>
         <p className="mt-1 line-clamp-2 text-small text-content-secondary">{hit.description}</p>
         <div className="mt-2 flex items-center gap-3 text-tiny text-content-muted">
@@ -161,11 +242,42 @@ export function DiscoverScreen({ instanceId }: { instanceId?: string }): React.J
   const [sort, setSort] = useState<'relevance' | 'downloads' | 'follows' | 'newest'>('relevance')
   const [query, setQuery] = useState('')
   const debounced = useDebounced(query, 350)
+  // Modpack installs create their own instance, so no instance filter applies;
+  // pack install is Modrinth-only.
+  const isPack = type === 'modpack'
+  useEffect(() => {
+    if (isPack && platform !== 'modrinth') setPlatform('modrinth')
+  }, [isPack, platform])
 
   const [result, setResult] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [installedIds, setInstalledIds] = useState<Set<string>>(new Set())
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Mark search results already present in the selected instance, and keep the
+  // set fresh when content changes elsewhere (Content tab deletes, installs).
+  useEffect(() => {
+    let cancelled = false
+    const refresh = (): void => {
+      if (!selectedId) {
+        setInstalledIds(new Set())
+        return
+      }
+      window.native.content
+        .installedProjects(selectedId)
+        .then((ids) => !cancelled && setInstalledIds(new Set(ids)))
+        .catch(() => undefined)
+    }
+    refresh()
+    const off = window.native.content.onLocalChanged((instanceId) => {
+      if (instanceId === selectedId) refresh()
+    })
+    return () => {
+      cancelled = true
+      off()
+    }
+  }, [selectedId])
 
   const search = useCallback(
     async (offset: number) => {
@@ -175,9 +287,9 @@ export function DiscoverScreen({ instanceId }: { instanceId?: string }): React.J
         const res = await window.native.content.search({
           query: debounced,
           type,
-          platform,
+          platform: type === 'modpack' ? 'modrinth' : platform,
           sort,
-          mcVersion: instance?.mcVersion ?? null,
+          mcVersion: type === 'modpack' ? null : (instance?.mcVersion ?? null),
           loader: type === 'mod' && instance && instance.loader !== 'vanilla' ? instance.loader : null,
           offset,
           limit: 20
@@ -205,19 +317,21 @@ export function DiscoverScreen({ instanceId }: { instanceId?: string }): React.J
     <div className="flex h-full flex-col p-6" data-testid="screen-discover">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-display text-content-primary">Discover content</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-small text-content-secondary">Install to</span>
-          <Select
-            value={selectedId ?? ''}
-            onChange={(v) => setSelectedId(v)}
-            minWidth={200}
-            options={
-              instances.length
-                ? instances.map((i) => ({ value: i.id, label: `${i.name} (${i.mcVersion})` }))
-                : [{ value: '', label: 'No instances' }]
-            }
-          />
-        </div>
+        {!isPack && (
+          <div className="flex items-center gap-2">
+            <span className="text-small text-content-secondary">Install to</span>
+            <Select
+              value={selectedId ?? ''}
+              onChange={(v) => setSelectedId(v)}
+              minWidth={200}
+              options={
+                instances.length
+                  ? instances.map((i) => ({ value: i.id, label: `${i.name} (${i.mcVersion})` }))
+                  : [{ value: '', label: 'No instances' }]
+              }
+            />
+          </div>
+        )}
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -226,10 +340,14 @@ export function DiscoverScreen({ instanceId }: { instanceId?: string }): React.J
           <Select
             value={platform}
             onChange={setPlatform}
-            options={[
-              { value: 'modrinth', label: 'Modrinth' },
-              { value: 'curseforge', label: 'CurseForge' }
-            ]}
+            options={
+              isPack
+                ? [{ value: 'modrinth', label: 'Modrinth' }]
+                : [
+                    { value: 'modrinth', label: 'Modrinth' },
+                    { value: 'curseforge', label: 'CurseForge' }
+                  ]
+            }
           />
           <Select
             label="Sort"
@@ -246,7 +364,15 @@ export function DiscoverScreen({ instanceId }: { instanceId?: string }): React.J
       </div>
 
       <SearchInput
-        placeholder={`Search ${type === 'mod' ? 'mods' : type === 'shader' ? 'shaders' : 'resource packs'}…`}
+        placeholder={`Search ${
+          type === 'mod'
+            ? 'mods'
+            : type === 'modpack'
+              ? 'modpacks'
+              : type === 'shader'
+                ? 'shaders'
+                : 'resource packs'
+        }…`}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="mt-3"
@@ -254,11 +380,18 @@ export function DiscoverScreen({ instanceId }: { instanceId?: string }): React.J
         autoFocus
       />
 
-      {instance && (
+      {isPack ? (
         <div className="mt-2 text-small text-content-muted">
-          Showing results compatible with {instance.loader !== 'vanilla' ? `${instance.loader} ` : ''}
-          {instance.mcVersion}
+          Installing a modpack creates a new instance with the pack's loader and version.
         </div>
+      ) : (
+        instance && (
+          <div className="mt-2 text-small text-content-muted">
+            Showing results compatible with{' '}
+            {instance.loader !== 'vanilla' ? `${instance.loader} ` : ''}
+            {instance.mcVersion}
+          </div>
+        )
       )}
 
       <div ref={scrollRef} className="mt-4 min-h-0 flex-1 overflow-y-auto">
@@ -274,7 +407,13 @@ export function DiscoverScreen({ instanceId }: { instanceId?: string }): React.J
           <div className="flex flex-col gap-3">
             <AnimatePresence mode="popLayout">
               {hits.map((hit) => (
-                <HitCard key={`${hit.platform}:${hit.projectId}`} hit={hit} instance={instance} />
+                <HitCard
+                  key={`${hit.platform}:${hit.projectId}`}
+                  hit={hit}
+                  instance={instance}
+                  installed={installedIds.has(hit.projectId)}
+                  onInstalled={(pid) => setInstalledIds((prev) => new Set(prev).add(pid))}
+                />
               ))}
             </AnimatePresence>
             {loading && (

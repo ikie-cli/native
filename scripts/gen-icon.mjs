@@ -14,7 +14,7 @@
  *   build/icons/{16..1024}    png ladder (NSIS + freedesktop)
  *   resources/logo.svg        vector master (renderer/docs)
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync, readFileSync, copyFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { PNG } from 'pngjs'
@@ -165,13 +165,63 @@ function svgMaster() {
 `
 }
 
+// ---- pure-JS ICO writer ----
+/**
+ * Pack a set of PNG buffers into a single Windows .ico (PNG-embedded entries).
+ * ICO layout:
+ *   6-byte header: u16 reserved(0), u16 type(1=icon), u16 image count
+ *   16-byte dir entry per image: w, h (0 means 256), colorCount(0), reserved(0),
+ *     u16 planes(1), u16 bpp(32), u32 byteSize, u32 offset
+ *   raw PNG blobs concatenated after the directory
+ */
+function buildIco(images) {
+  const count = images.length
+  const header = Buffer.alloc(6)
+  header.writeUInt16LE(0, 0) // reserved
+  header.writeUInt16LE(1, 2) // type: icon
+  header.writeUInt16LE(count, 4) // image count
+
+  const dir = Buffer.alloc(16 * count)
+  let offset = 6 + 16 * count
+  images.forEach((img, i) => {
+    const base = i * 16
+    dir.writeUInt8(img.size >= 256 ? 0 : img.size, base + 0) // width (0 = 256)
+    dir.writeUInt8(img.size >= 256 ? 0 : img.size, base + 1) // height (0 = 256)
+    dir.writeUInt8(0, base + 2) // color palette count
+    dir.writeUInt8(0, base + 3) // reserved
+    dir.writeUInt16LE(1, base + 4) // color planes
+    dir.writeUInt16LE(32, base + 6) // bits per pixel
+    dir.writeUInt32LE(img.data.length, base + 8) // byte size of image
+    dir.writeUInt32LE(offset, base + 12) // offset of image data
+    offset += img.data.length
+  })
+
+  return Buffer.concat([header, dir, ...images.map((img) => img.data)])
+}
+
 // ---- write everything ----
 mkdirSync(join(root, 'build', 'icons'), { recursive: true })
 mkdirSync(join(root, 'resources'), { recursive: true })
+mkdirSync(join(root, 'src', 'renderer', 'src', 'assets'), { recursive: true })
 
 writeFileSync(join(root, 'build', 'icon.png'), renderTile(512))
 for (const s of [16, 24, 32, 48, 64, 128, 256, 512, 1024]) {
   writeFileSync(join(root, 'build', 'icons', `${s}x${s}.png`), renderTile(s))
 }
 writeFileSync(join(root, 'resources', 'logo.svg'), svgMaster())
-console.log('logo set written: build/icon.png, build/icons/{16..1024}, resources/logo.svg')
+
+// Windows multi-resolution .ico from the PNG ladder (16..256).
+const icoSizes = [16, 24, 32, 48, 64, 128, 256]
+const ico = buildIco(
+  icoSizes.map((size) => ({ size, data: readFileSync(join(root, 'build', 'icons', `${size}x${size}.png`)) }))
+)
+writeFileSync(join(root, 'build', 'icon.ico'), ico)
+
+// Runtime assets: window/tray icons + renderer wordmark.
+copyFileSync(join(root, 'build', 'icon.png'), join(root, 'resources', 'icon.png'))
+copyFileSync(join(root, 'build', 'icons', '32x32.png'), join(root, 'resources', 'tray.png'))
+copyFileSync(join(root, 'build', 'icon.png'), join(root, 'src', 'renderer', 'src', 'assets', 'icon.png'))
+
+console.log(
+  'logo set written: build/icon.png, build/icons/{16..1024}, build/icon.ico, resources/{logo.svg,icon.png,tray.png}, src/renderer/src/assets/icon.png'
+)

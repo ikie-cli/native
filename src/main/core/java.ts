@@ -146,20 +146,38 @@ interface AdoptiumAsset {
   version: { semver: string }
 }
 
-/** Download a JRE for `major` from Adoptium into the managed java dir. */
-export async function downloadJava(major: number, task: DownloadTask): Promise<JavaInstall> {
+export interface JavaAsset {
+  url: string
+  size: number
+  semver: string
+}
+
+/** Resolve the Adoptium JRE asset for `major` (url + size) without downloading it. */
+export async function resolveJavaAsset(major: number): Promise<JavaAsset> {
   const os = osName() === 'osx' ? 'mac' : osName()
   const arch = osArch() === 'arm64' ? 'aarch64' : osArch() === 'x86' ? 'x86' : 'x64'
   const api = `${URLS.adoptium()}/v3/assets/latest/${major}/hotspot?architecture=${arch}&image_type=jre&os=${os}&vendor=eclipse`
   const assets = await fetchJson<AdoptiumAsset[]>(api)
   const asset = assets.find((a) => a.binary?.package?.link)
   if (!asset) throw new Error(`No Java ${major} runtime available for ${os}/${arch}`)
+  return {
+    url: asset.binary.package.link,
+    size: asset.binary.package.size,
+    semver: asset.version?.semver ?? String(major)
+  }
+}
 
-  const url = asset.binary.package.link
+/** Download a JRE for `major` from Adoptium into the managed java dir. */
+export async function downloadJava(
+  major: number,
+  task: DownloadTask,
+  asset?: JavaAsset
+): Promise<JavaInstall> {
+  const { url, size } = asset ?? (await resolveJavaAsset(major))
   const isZip = url.endsWith('.zip')
   const dest = join(paths.cache(), `java-${major}${isZip ? '.zip' : '.tar.gz'}`)
   task.setPhase('java')
-  await task.run([{ url, dest, size: asset.binary.package.size }], 4)
+  await task.run([{ url, dest, size }], 4)
 
   const target = paths.javaMajor(major)
   await removePath(target)
@@ -176,13 +194,29 @@ export async function downloadJava(major: number, task: DownloadTask): Promise<J
   return { ...probed, source: 'managed' }
 }
 
+/** Asked before a Java download starts; return false to abort. */
+export type JavaDownloadConfirm = (info: {
+  major: number
+  javaVersion: string
+  sizeBytes: number
+}) => Promise<boolean>
+
+export class JavaDownloadDeclined extends Error {
+  constructor(major: number) {
+    super(`Java ${major} is required to play, but the download was declined`)
+    this.name = 'JavaDownloadDeclined'
+  }
+}
+
 /**
- * Ensure a Java for the needed major exists: override → installed match → download.
+ * Ensure a Java for the needed major exists: override → installed match
+ * (managed download or system install) → confirm → download.
  */
 export async function ensureJava(
   majorNeeded: number,
   override: string | null,
-  task: DownloadTask
+  task: DownloadTask,
+  confirm?: JavaDownloadConfirm
 ): Promise<string> {
   if (override) {
     const probed = await probeJava(override)
@@ -196,7 +230,12 @@ export async function ensureJava(
   }
   const found = await findJavaForMajor(majorNeeded)
   if (found) return found.path
-  const dl = await downloadJava(majorNeeded, task)
+  const asset = await resolveJavaAsset(majorNeeded)
+  if (confirm) {
+    const ok = await confirm({ major: majorNeeded, javaVersion: asset.semver, sizeBytes: asset.size })
+    if (!ok) throw new JavaDownloadDeclined(majorNeeded)
+  }
+  const dl = await downloadJava(majorNeeded, task, asset)
   return dl.path
 }
 

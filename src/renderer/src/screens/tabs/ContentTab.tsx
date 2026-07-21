@@ -3,18 +3,21 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   Box,
+  CircleArrowUp,
   FileUp,
   Package,
   PlusCircle,
   Puzzle,
+  RefreshCw,
   Sparkles,
   Trash2
 } from 'lucide-react'
 import type { ContentKind, InstanceConfig, LocalContentFile } from '@shared/types'
-import { useToasts, toastError } from '@/stores/data'
-import { useNav } from '@/stores/nav'
-import { Button, EmptyState, Spinner, Toggle } from '@/components/ui/ui'
+import { useContentUpdates, useToasts, useUpdateCount, toastError } from '@/stores/data'
+import { useModals, useNav } from '@/stores/nav'
+import { Button, EmptyState, IconButton, Spinner, Toggle } from '@/components/ui/ui'
 import { PillTabs } from '@/components/ui/tabs'
+import { Tooltip } from '@/components/ui/tooltip'
 import { formatBytes } from '@/lib/util'
 
 const KIND_TABS = [
@@ -32,11 +35,17 @@ const KIND_FILTERS: Record<ContentKind, { name: string; extensions: string[] }[]
 function ContentRow({
   file,
   onToggle,
-  onDelete
+  onDelete,
+  onOpen,
+  onUpdate,
+  updating
 }: {
   file: LocalContentFile
   onToggle: (v: boolean) => void
   onDelete: () => void
+  onOpen: (() => void) | null
+  onUpdate: (() => void) | null
+  updating: boolean
 }): React.JSX.Element {
   return (
     <motion.div
@@ -46,12 +55,23 @@ function ContentRow({
       exit={{ opacity: 0, height: 0 }}
       className="group flex items-center gap-3 rounded-md2 bg-surface-raised px-4 py-3 transition-colors duration-fast hover:bg-surface-hover"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm2 bg-surface-inset text-content-secondary">
-        <Package size={18} />
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-sm2 bg-surface-inset text-content-secondary">
+        {file.icon ? (
+          <img
+            src={file.icon}
+            alt=""
+            className={`h-full w-full object-cover ${file.enabled ? '' : 'opacity-40 grayscale'}`}
+          />
+        ) : (
+          <Package size={18} />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className={`truncate text-body font-semibold ${file.enabled ? 'text-content-primary' : 'text-content-muted line-through'}`}>
+          <span
+            onClick={onOpen ?? undefined}
+            className={`truncate text-body font-semibold ${file.enabled ? 'text-content-primary' : 'text-content-muted line-through'} ${onOpen ? 'cursor-pointer hover:text-accent hover:underline' : ''}`}
+          >
             {file.meta?.name ?? file.fileName}
           </span>
           {file.meta?.version && (
@@ -62,6 +82,22 @@ function ContentRow({
           {file.fileName} · {formatBytes(file.sizeBytes)}
         </div>
       </div>
+      {file.update && onUpdate && (
+        <Tooltip
+          label={`${file.meta?.version ?? 'installed'} → ${file.update.versionNumber}`}
+          side="top"
+        >
+          <Button
+            size="sm"
+            icon={updating ? undefined : CircleArrowUp}
+            onClick={onUpdate}
+            disabled={updating}
+            data-testid={`update-${file.fileName}`}
+          >
+            {updating ? <Spinner size={14} /> : 'Update'}
+          </Button>
+        </Tooltip>
+      )}
       <Toggle checked={file.enabled} onChange={onToggle} label={`Enable ${file.fileName}`} />
       <button
         aria-label={`Delete ${file.fileName}`}
@@ -77,12 +113,16 @@ function ContentRow({
 export function ContentTab({ inst }: { inst: InstanceConfig }): React.JSX.Element {
   const [kind, setKind] = useState<ContentKind>('mod')
   const [files, setFiles] = useState<LocalContentFile[] | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [updatingAll, setUpdatingAll] = useState(false)
+  const [updatingFiles, setUpdatingFiles] = useState<Set<string>>(new Set())
+  const updateCount = useUpdateCount(inst.id)
   const { go } = useNav()
+  const openProject = useModals((s) => s.openProject)
   const push = useToasts((s) => s.push)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
-    setFiles(null)
     try {
       setFiles(await window.native.content.listLocal(inst.id, kind))
     } catch (err) {
@@ -92,8 +132,72 @@ export function ContentTab({ inst }: { inst: InstanceConfig }): React.JSX.Elemen
   }, [inst.id, kind])
 
   useEffect(() => {
+    setFiles(null)
     void load()
   }, [load])
+
+  // Installs/updates/removals elsewhere (Discover, project modal, updater)
+  // land here live.
+  useEffect(() => {
+    return window.native.content.onLocalChanged((id) => {
+      if (id === inst.id) void load()
+    })
+  }, [inst.id, load])
+
+  const checkNow = async (): Promise<void> => {
+    setChecking(true)
+    try {
+      const res = await useContentUpdates.getState().check(inst.id, { force: true })
+      if (res?.fromCache) {
+        push({
+          kind: 'info',
+          title: "Couldn't reach the update servers",
+          detail: 'Showing the last known results.'
+        })
+      } else if (res && res.updates.length === 0) {
+        push({ kind: 'success', title: 'Everything is up to date' })
+      }
+      await load()
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  const updateOne = async (file: LocalContentFile): Promise<void> => {
+    setUpdatingFiles((s) => new Set(s).add(file.fileName))
+    try {
+      await window.native.content.applyUpdate(inst.id, kind, file.fileName)
+      push({ kind: 'success', title: `Updated ${file.meta?.name ?? file.fileName}` })
+    } catch (err) {
+      toastError(err, `Couldn't update ${file.meta?.name ?? file.fileName}`)
+    } finally {
+      setUpdatingFiles((s) => {
+        const next = new Set(s)
+        next.delete(file.fileName)
+        return next
+      })
+    }
+  }
+
+  const updateAllNow = async (): Promise<void> => {
+    setUpdatingAll(true)
+    try {
+      const res = await window.native.content.updateAll(inst.id)
+      if (res.failed.length > 0) {
+        push({
+          kind: 'error',
+          title: `Updated ${res.applied}, ${res.failed.length} failed`,
+          detail: res.failed.map((f) => f.fileName).join(', ')
+        })
+      } else if (res.applied > 0) {
+        push({ kind: 'success', title: `Updated ${res.applied} item${res.applied === 1 ? '' : 's'}` })
+      }
+    } catch (err) {
+      toastError(err, "Couldn't update content")
+    } finally {
+      setUpdatingAll(false)
+    }
+  }
 
   const rows = files ?? []
   const virtualizer = useVirtualizer({
@@ -119,7 +223,27 @@ export function ContentTab({ inst }: { inst: InstanceConfig }): React.JSX.Elemen
     <div className="flex h-full flex-col px-6 pb-6">
       <div className="flex items-center justify-between gap-3 py-1">
         <PillTabs items={KIND_TABS} value={kind} onChange={setKind} size="sm" />
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {updateCount > 0 && (
+            <Button
+              size="sm"
+              icon={updatingAll ? undefined : CircleArrowUp}
+              onClick={updateAllNow}
+              disabled={updatingAll}
+              data-testid="content-update-all"
+            >
+              {updatingAll ? <Spinner size={14} /> : `Update all (${updateCount})`}
+            </Button>
+          )}
+          <Tooltip label="Check for updates" side="top">
+            <IconButton
+              icon={RefreshCw}
+              label="Check for updates"
+              onClick={() => void checkNow()}
+              className={checking ? 'animate-spin' : undefined}
+              data-testid="content-check-updates"
+            />
+          </Tooltip>
           <Button
             size="sm"
             variant="secondary"
@@ -189,6 +313,18 @@ export function ContentTab({ inst }: { inst: InstanceConfig }): React.JSX.Elemen
                   >
                     <ContentRow
                       file={file}
+                      onUpdate={file.update ? () => void updateOne(file) : null}
+                      updating={updatingFiles.has(file.fileName)}
+                      onOpen={
+                        file.meta?.projectId
+                          ? () =>
+                              openProject({
+                                platform: file.meta?.platform ?? 'modrinth',
+                                projectId: file.meta!.projectId!,
+                                instanceId: inst.id
+                              })
+                          : null
+                      }
                       onToggle={(v) => {
                         setFiles((prev) =>
                           prev!.map((f) => (f.fileName === file.fileName ? { ...f, enabled: v } : f))

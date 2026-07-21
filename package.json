@@ -1,19 +1,19 @@
 {
   "name": "native-launcher",
   "productName": "Native",
-  "version": "0.1.0",
-  "description": "Native \u2014 a fast, beautiful Minecraft launcher",
+  "version": "0.3.0",
+  "description": "Native — a fast, beautiful Minecraft launcher",
   "main": "./out/main/index.js",
   "author": {
-    "name": "Native Contributors",
-    "email": "hello@native.example"
+    "name": "Native Labs",
+    "email": "support@nativelauncher.app"
   },
   "homepage": "https://github.com/native-launcher/native",
   "repository": {
     "type": "git",
     "url": "https://github.com/native-launcher/native.git"
   },
-  "license": "MIT",
+  "license": "UNLICENSED",
   "private": true,
   "engines": {
     "node": ">=20.0.0"
@@ -34,14 +34,17 @@
     "package:win": "electron-vite build && electron-builder --win",
     "package:dir": "electron-vite build && electron-builder --dir",
     "postinstall": "node scripts/patch-nsis.mjs || true",
-    "package:win-host": "electron-vite build && NSIS_UNINSTALLER_READER=true electron-builder --win nsis --x64 -c.win.signAndEditExecutable=false -c.nsis.warningsAsErrors=false"
+    "package:win-host": "electron-vite build && NSIS_UNINSTALLER_READER=true electron-builder --win nsis --x64 -c.win.signAndEditExecutable=false -c.nsis.warningsAsErrors=false",
+    "brand:win": "node scripts/brand-win-exe.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "better-sqlite3": "^11.10.0",
+    "dompurify": "^3.4.12",
     "electron-log": "^5.2.4",
     "electron-updater": "^6.3.9",
+    "marked": "^18.0.7",
     "msmc": "^5.0.5"
   },
   "devDependencies": {
@@ -71,6 +74,7 @@
     "postcss": "^8.4.49",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "resedit": "^1.7.2",
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",

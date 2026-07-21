@@ -97,7 +97,10 @@ test('detects update, downloads it, and reaches ready-to-install', async () => {
       APPIMAGE: APPIMAGE!,
       // updater check fires 8s after init; autoDownload defaults on
       NATIVE_E2E: '' // allow the updater (NATIVE_E2E disables auto-check)
-    }
+    },
+    // NATIVE_E2E off also un-gates the first-run tour — pre-dismiss it so the
+    // overlay can't intercept this spec's clicks.
+    seed: { settings: { onboardingDone: true } }
   })
   const { page } = app
 

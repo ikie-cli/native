@@ -3,9 +3,11 @@ import type {
   AccountInfo,
   AppSettings,
   AuthFlowState,
+  ContentUpdatesResult,
   CrashInfo,
   DownloadTaskProgress,
   InstanceConfig,
+  JavaDownloadRequest,
   LogLine,
   NewsItem,
   RunningGame,
@@ -107,6 +109,79 @@ interface DownloadsState {
 
 export const useDownloads = create<DownloadsState>(() => ({ tasks: [] }))
 
+/** True while this instance has an active launch/install/loader download. */
+export function useInstanceBusy(id: string): boolean {
+  return useDownloads((s) =>
+    s.tasks.some(
+      (t) =>
+        t.state === 'running' &&
+        (t.id === `launch:${id}` || t.id === `install:${id}` || t.id === `loader:${id}`)
+    )
+  )
+}
+
+/* ---------------- content updates ---------------- */
+
+/** Re-check an instance at most every 30 min unless forced. */
+const UPDATE_CHECK_TTL = 30 * 60_000
+
+interface ContentUpdatesState {
+  byInstance: Record<string, ContentUpdatesResult>
+  lastAttempt: Record<string, number>
+  /** Load the cached (offline-safe) results. */
+  refresh: (instanceId: string) => Promise<void>
+  /** Network check, throttled; offline silently keeps the cache. */
+  check: (instanceId: string, opts?: { force?: boolean }) => Promise<ContentUpdatesResult | null>
+}
+
+export const useContentUpdates = create<ContentUpdatesState>((set, get) => ({
+  byInstance: {},
+  lastAttempt: {},
+  refresh: async (instanceId) => {
+    try {
+      const result = await window.native.content.updates(instanceId)
+      set((s) => ({ byInstance: { ...s.byInstance, [instanceId]: result } }))
+    } catch {
+      /* keep whatever we have */
+    }
+  },
+  check: async (instanceId, opts) => {
+    const now = Date.now()
+    if (!opts?.force && now - (get().lastAttempt[instanceId] ?? 0) < UPDATE_CHECK_TTL) return null
+    set((s) => ({ lastAttempt: { ...s.lastAttempt, [instanceId]: now } }))
+    try {
+      const result = await window.native.content.checkUpdates(instanceId)
+      set((s) => ({ byInstance: { ...s.byInstance, [instanceId]: result } }))
+      return result
+    } catch {
+      // offline or instance gone — cached results stay visible
+      return null
+    }
+  }
+}))
+
+/** Available-update count for the Content tab badge. */
+export function useUpdateCount(instanceId: string): number {
+  return useContentUpdates((s) => s.byInstance[instanceId]?.updates.length ?? 0)
+}
+
+/* ---------------- java download confirmation ---------------- */
+
+interface JavaAskState {
+  request: JavaDownloadRequest | null
+  answer: (accepted: boolean) => void
+}
+
+export const useJavaAsk = create<JavaAskState>((set, get) => ({
+  request: null,
+  answer: (accepted) => {
+    const req = get().request
+    if (!req) return
+    set({ request: null })
+    void window.native.java.answerDownload(req.requestId, accepted)
+  }
+}))
+
 /* ---------------- updater ---------------- */
 
 interface UpdaterStoreState {
@@ -200,6 +275,10 @@ export async function bootstrapStores(): Promise<void> {
   n.running.onLog((id, lines) => useRunning.getState().appendLogs(id, lines))
   n.running.onCrash((crash) => useRunning.setState({ crash }))
   n.downloads.onProgress((tasks) => useDownloads.setState({ tasks }))
+  n.content.onUpdatesChanged((instanceId, result) =>
+    useContentUpdates.setState((s) => ({ byInstance: { ...s.byInstance, [instanceId]: result } }))
+  )
+  n.java.onAskDownload((request) => useJavaAsk.setState({ request }))
   n.updater.onState((state) => useUpdater.setState({ state, dismissed: false }))
 
   const [settings, accounts, instances, running, tasks, updater] = await Promise.all([

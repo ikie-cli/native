@@ -6,6 +6,8 @@ export interface TabItem<T extends string> {
   id: T
   label: string
   icon?: LucideIcon
+  /** notification count chip after the label (hidden when 0/undefined) */
+  badge?: number
 }
 
 /**
@@ -97,6 +99,17 @@ export function PillTabs<T extends string>({
           >
             {Icon && <Icon size={size === 'md' ? 17 : 15} strokeWidth={2.2} />}
             {item.label}
+            {item.badge != null && item.badge > 0 && (
+              <span
+                data-testid={`tab-badge-${item.id}`}
+                className={cn(
+                  'inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-bold leading-none',
+                  active ? 'bg-accent-contrast/20 text-accent-contrast' : 'bg-accent text-accent-contrast'
+                )}
+              >
+                {item.badge > 99 ? '99+' : item.badge}
+              </span>
+            )}
           </button>
         )
       })}

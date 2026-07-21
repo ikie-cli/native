@@ -53,6 +53,7 @@ function fakeInstance(versionId: string, overrides: Partial<InstanceConfig> = {}
     totalPlayMs: 0,
     installed: false,
     notes: '',
+    resolvedVersionId: null,
     ...overrides
   }
 }
@@ -60,9 +61,11 @@ function fakeInstance(versionId: string, overrides: Partial<InstanceConfig> = {}
 function manager(versionId: string, playtimes: [string, number, number][]): LaunchManager {
   return new LaunchManager({
     resolveVersionId: async () => versionId,
+    peekVersionId: async () => versionId,
     account: async () => ({ name: 'Tester', uuid: 'u-1', accessToken: 'offline', type: 'offline' }),
     concurrency: () => 4,
-    onPlaytime: (id, s, e) => playtimes.push([id, s, e])
+    onPlaytime: (id, s, e) => playtimes.push([id, s, e]),
+    confirmJavaDownload: async () => true
   })
 }
 

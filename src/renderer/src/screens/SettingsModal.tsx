@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Cpu, Download, FolderCog, Info, RefreshCw, Rocket, Settings2 } from 'lucide-react'
 import type { AppSettings, JavaInstall } from '@shared/types'
+import iconUrl from '@/assets/icon.png'
 import { useSettings, useUpdater, useToasts, toastError } from '@/stores/data'
 import { useModals } from '@/stores/nav'
 import { Modal, FieldLabel } from '@/components/ui/modal'
@@ -70,6 +71,24 @@ const THEME_CARDS: {
   { id: 'light', label: 'Classic Light', bg: '#f4f6f8', card: '#dfe3e8', line: '#12b859' }
 ]
 
+function ReplayTourButton(): React.JSX.Element {
+  const { set } = useSettings()
+  const setSettingsOpen = useModals((s) => s.setSettingsOpen)
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      data-testid="replay-tour"
+      onClick={() => {
+        setSettingsOpen(false)
+        void set({ onboardingDone: false })
+      }}
+    >
+      Show tour
+    </Button>
+  )
+}
+
 function GeneralPane(): React.JSX.Element {
   const { settings, set } = useSettings()
   return (
@@ -127,6 +146,9 @@ function GeneralPane(): React.JSX.Element {
           minWidth={160}
           options={[{ value: 'en', label: 'English' }]}
         />
+      </Row>
+      <Row title="Welcome tour" detail="Replay the step-by-step introduction for new players.">
+        <ReplayTourButton />
       </Row>
       <Row title="Default resolution" detail="Applied to new instances.">
         <div className="flex items-center gap-2">
@@ -286,19 +308,6 @@ function ContentPane(): React.JSX.Element {
           </div>
         </Row>
       </div>
-      <div>
-        <FieldLabel>CurseForge API key</FieldLabel>
-        <Input
-          type="password"
-          value={settings.curseforgeApiKey ?? ''}
-          onChange={(e) => void set({ curseforgeApiKey: e.target.value || null })}
-          placeholder="Optional — enables CurseForge search"
-          className="font-mono text-small"
-        />
-        <p className="mt-1.5 text-tiny text-content-muted">
-          Modrinth works without a key. Add a CurseForge key to search their catalog too.
-        </p>
-      </div>
     </div>
   )
 }
@@ -356,10 +365,7 @@ function AboutPane(): React.JSX.Element {
   }, [])
   return (
     <div className="flex flex-col items-center gap-3 py-6 text-center">
-      <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
-        <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="var(--accent)" />
-        <path d="M8 16V8.6c0-.5.6-.8 1-.4l6.4 6.9c.4.4 1 .1 1-.4V8" stroke="var(--accent-contrast)" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <img src={iconUrl} width={56} height={56} className="rounded-md2" alt="" draggable={false} />
       <div>
         <div className="text-h2 font-extrabold text-content-primary">Native</div>
         <div className="text-small text-content-secondary">Version {info?.version ?? '—'}</div>

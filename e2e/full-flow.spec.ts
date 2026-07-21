@@ -86,18 +86,19 @@ test('create → install loader → add mod → launch → process spawns → st
   // Running chip appears in the titlebar; play button flips to Stop.
   await expect(page.getByLabel('Stop game')).toBeVisible({ timeout: 90_000 })
 
-  // The FakeClient wrote its argv — the process really spawned.
+  // The FakeClient wrote its argv — the process really spawned. Poll for the
+  // CONTENT, not mere existence: the file is created a beat before its write
+  // lands, and an empty read here was a recurring flake.
   await expect
     .poll(
       () => {
         const p = join(instancesDir, created!, 'minecraft', 'launched.txt')
-        return existsSync(p) ? readFileSync(p, 'utf-8') : null
+        return existsSync(p) ? readFileSync(p, 'utf-8') : ''
       },
       { timeout: 30_000 }
     )
-    .not.toBeNull()
+    .toContain('--username')
   const argv = readFileSync(join(instancesDir, created!, 'minecraft', 'launched.txt'), 'utf-8')
-  expect(argv).toContain('--username')
   expect(argv).toContain('TestPlayer')
 
   // Live logs stream into the console view.

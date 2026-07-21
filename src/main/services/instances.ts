@@ -8,6 +8,7 @@ import { copyDir, ensureDir, removePath } from '../utils/fsx'
 import { DownloadManager, type DownloadTask } from '../core/download'
 import { installLoader, pickLoaderVersion } from '../core/loaders'
 import { installVersion } from '../core/install'
+import { getLocalVersionJson } from '../core/manifest'
 import { log } from '../logger'
 
 interface InstanceRow {
@@ -30,6 +31,7 @@ interface InstanceRow {
   total_play_ms: number
   installed: number
   notes: string
+  resolved_version_id: string | null
 }
 
 const EDITABLE: (keyof InstanceConfig)[] = [
@@ -153,13 +155,13 @@ export class InstancesService extends EventEmitter {
       }
     }
     if (sets.length > 0) {
-      // Version/loader change invalidates the install.
+      // Version/loader change invalidates the install and the cached version id.
       if (
         (patch.mcVersion && patch.mcVersion !== existing.mcVersion) ||
         (patch.loader && patch.loader !== existing.loader) ||
         (patch.loaderVersion !== undefined && patch.loaderVersion !== existing.loaderVersion)
       ) {
-        sets.push('installed = 0')
+        sets.push('installed = 0', 'resolved_version_id = NULL')
       }
       vals.push(id)
       this.db.prepare(`UPDATE instances SET ${sets.join(', ')} WHERE id = ?`).run(...vals)
@@ -200,8 +202,8 @@ export class InstancesService extends EventEmitter {
     })
     await copyDir(paths.instanceGameDir(id), paths.instanceGameDir(copy.id))
     this.db
-      .prepare('UPDATE instances SET installed = ? WHERE id = ?')
-      .run(src.installed ? 1 : 0, copy.id)
+      .prepare('UPDATE instances SET installed = ?, resolved_version_id = ? WHERE id = ?')
+      .run(src.installed ? 1 : 0, src.resolvedVersionId, copy.id)
     this.db
       .prepare(
         `INSERT INTO content_index (instance_id, file_name, kind, project_id, version_id, platform, display_name, version_number)
@@ -214,12 +216,29 @@ export class InstancesService extends EventEmitter {
   }
 
   /**
+   * Read-only resolve: the launchable version id if it's already installed
+   * locally, else null. Never downloads, never shows progress UI.
+   */
+  async peekVersionId(inst: InstanceConfig): Promise<string | null> {
+    if (inst.loader === 'vanilla') return inst.mcVersion
+    if (inst.resolvedVersionId && (await getLocalVersionJson(inst.resolvedVersionId))) {
+      return inst.resolvedVersionId
+    }
+    return null
+  }
+
+  /**
    * Resolve the launchable version id for an instance, installing the loader
    * profile on first use. Loader version 'stable'/'latest'/null are resolved
-   * to a concrete version and persisted.
+   * to a concrete version and persisted, and the resulting version id is
+   * cached so subsequent resolves are offline no-ops (no download UI).
    */
   async resolveVersionId(inst: InstanceConfig, task?: DownloadTask): Promise<string> {
     if (inst.loader === 'vanilla') return inst.mcVersion
+    // Cache hit: loader profile already installed → nothing to download.
+    if (inst.resolvedVersionId && (await getLocalVersionJson(inst.resolvedVersionId))) {
+      return inst.resolvedVersionId
+    }
     const ownTask =
       task ??
       DownloadManager.createTask(`loader:${inst.id}`, { label: inst.name, phase: 'loader' })
@@ -231,6 +250,9 @@ export class InstancesService extends EventEmitter {
           .run(concrete, inst.id)
       }
       const versionId = await installLoader(inst.loader, inst.mcVersion, concrete, ownTask)
+      this.db
+        .prepare('UPDATE instances SET resolved_version_id = ? WHERE id = ?')
+        .run(versionId, inst.id)
       if (!task) ownTask.finish()
       return versionId
     } catch (err) {
@@ -243,6 +265,11 @@ export class InstancesService extends EventEmitter {
   async install(id: string, concurrency: number): Promise<void> {
     const inst = this.get(id)
     if (!inst) throw new Error('Instance not found')
+    for (const prefix of ['launch', 'install', 'loader']) {
+      if (DownloadManager.get(`${prefix}:${id}`)?.state === 'running') {
+        throw new Error(`${inst.name} is already downloading`)
+      }
+    }
     const task = DownloadManager.createTask(`install:${id}`, {
       label: inst.name,
       phase: 'prepare'
@@ -294,7 +321,8 @@ function rowToConfig(r: InstanceRow): InstanceConfig {
     lastPlayedAt: r.last_played_at,
     totalPlayMs: r.total_play_ms,
     installed: r.installed === 1,
-    notes: r.notes
+    notes: r.notes,
+    resolvedVersionId: r.resolved_version_id
   }
 }
 

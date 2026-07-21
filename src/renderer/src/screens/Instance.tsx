@@ -13,7 +13,15 @@ import {
 } from 'lucide-react'
 import type { InstanceConfig, LaunchValidation } from '@shared/types'
 import { LOADER_LABELS } from '@shared/types'
-import { useInstances, useRunning, useToasts, toastError } from '@/stores/data'
+import {
+  useContentUpdates,
+  useInstanceBusy,
+  useInstances,
+  useRunning,
+  useToasts,
+  useUpdateCount,
+  toastError
+} from '@/stores/data'
 import { useNav, type InstanceTab } from '@/stores/nav'
 import { InstanceIcon } from '@/components/InstanceIcon'
 import { LoaderMark } from '@/components/LoaderMark'
@@ -27,12 +35,14 @@ const ScreenshotsTab = lazy(() =>
   import('@/screens/tabs/ScreenshotsTab').then((m) => ({ default: m.ScreenshotsTab }))
 )
 const LogsTab = lazy(() => import('@/screens/tabs/LogsTab').then((m) => ({ default: m.LogsTab })))
+const FilesTab = lazy(() => import('@/screens/tabs/FilesTab').then((m) => ({ default: m.FilesTab })))
 const OptionsTab = lazy(() => import('@/screens/tabs/OptionsTab').then((m) => ({ default: m.OptionsTab })))
 
 const TABS = [
   { id: 'content' as const, label: 'Content', icon: Boxes },
   { id: 'worlds' as const, label: 'Worlds', icon: Globe2 },
   { id: 'screenshots' as const, label: 'Screenshots', icon: Image },
+  { id: 'files' as const, label: 'Files', icon: FolderOpen },
   { id: 'logs' as const, label: 'Logs', icon: FileText },
   { id: 'options' as const, label: 'Options', icon: Settings2 }
 ]
@@ -42,7 +52,8 @@ function PlayButton({ inst }: { inst: InstanceConfig }): React.JSX.Element {
   const push = useToasts((s) => s.push)
   const { go } = useNav()
   const [validation, setValidation] = useState<LaunchValidation | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [launching, setLaunching] = useState(false)
+  const busy = useInstanceBusy(inst.id) || launching
 
   useEffect(() => {
     let cancelled = false
@@ -56,7 +67,7 @@ function PlayButton({ inst }: { inst: InstanceConfig }): React.JSX.Element {
   }, [inst.id, inst.mcVersion, inst.loader, inst.installed])
 
   const launch = async (): Promise<void> => {
-    setBusy(true)
+    setLaunching(true)
     try {
       const v = await window.native.instances.validate(inst.id)
       const blocking = v.problems.find((p) => p.severity === 'error')
@@ -64,12 +75,12 @@ function PlayButton({ inst }: { inst: InstanceConfig }): React.JSX.Element {
         if (blocking.code.startsWith('java')) {
           push({
             kind: 'error',
-            title: 'Java required',
-            detail: `${blocking.message}. Native will download it automatically on launch.`
+            title: 'Java problem',
+            detail: blocking.message
           })
         } else {
           toastError(new Error(blocking.message), "Can't launch yet")
-          setBusy(false)
+          setLaunching(false)
           return
         }
       }
@@ -79,7 +90,7 @@ function PlayButton({ inst }: { inst: InstanceConfig }): React.JSX.Element {
     } catch (err) {
       toastError(err, `Couldn't launch ${inst.name}`)
     } finally {
-      setBusy(false)
+      setLaunching(false)
     }
   }
 
@@ -136,6 +147,15 @@ function InstanceHeader({ inst }: { inst: InstanceConfig }): React.JSX.Element {
 export function InstanceScreen({ id, tab }: { id: string; tab: InstanceTab }): React.JSX.Element {
   const inst = useInstances((s) => s.byId(id))
   const { go } = useNav()
+  const updateCount = useUpdateCount(id)
+
+  // Badge data: cached results immediately (works offline), then a throttled
+  // background re-check — failures are silent and keep the cache.
+  useEffect(() => {
+    const store = useContentUpdates.getState()
+    void store.refresh(id)
+    void store.check(id)
+  }, [id])
 
   if (!inst) {
     return (
@@ -150,7 +170,7 @@ export function InstanceScreen({ id, tab }: { id: string; tab: InstanceTab }): R
       <InstanceHeader inst={inst} />
       <div className="mt-5 border-b border-line-subtle px-6">
         <PillTabs
-          items={TABS}
+          items={TABS.map((t) => (t.id === 'content' ? { ...t, badge: updateCount } : t))}
           value={tab}
           onChange={(t) => go({ name: 'instance', id, tab: t })}
           className="mb-3 bg-transparent p-0"
@@ -174,6 +194,7 @@ export function InstanceScreen({ id, tab }: { id: string; tab: InstanceTab }): R
             {tab === 'content' && <ContentTab inst={inst} />}
             {tab === 'worlds' && <WorldsTab inst={inst} />}
             {tab === 'screenshots' && <ScreenshotsTab inst={inst} />}
+            {tab === 'files' && <FilesTab inst={inst} />}
             {tab === 'logs' && <LogsTab inst={inst} />}
             {tab === 'options' && <OptionsTab inst={inst} />}
           </Suspense>
