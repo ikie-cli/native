@@ -76,4 +76,4 @@ mac:
 publish:
   provider: github
   owner: ikie-cli
-  repo: native
+  repo: native-releases

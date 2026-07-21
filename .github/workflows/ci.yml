@@ -163,6 +163,8 @@ jobs:
       - name: Create GitHub Release with update feeds
         uses: softprops/action-gh-release@v2
         with:
+          repository: ikie-cli/native-releases
+          token: ${{ secrets.RELEASE_TOKEN }}
           files: |
             dist/*.AppImage
             dist/*.deb
@@ -197,18 +199,18 @@ jobs:
         shell: bash
         run: |
           mkdir -p site/website/updates
-          cp legacy/windows/*.exe site/website/updates/
-          cp legacy/windows/*.blockmap site/website/updates/
           cp legacy/windows/latest.yml site/website/updates/latest.yml
-          cp legacy/linux-arm64/*.AppImage site/website/updates/
           cp legacy/linux-arm64/latest-linux*.yml site/website/updates/
+          release_url="https://github.com/ikie-cli/native-releases/releases/download/${{ github.ref_name }}"
+          sed -i -E "s#^([[:space:]]*-?[[:space:]]*url:[[:space:]]*)([^h].*)#\\1${release_url}/\\2#" site/website/updates/latest.yml
+          sed -i -E "s#^([[:space:]]*-?[[:space:]]*url:[[:space:]]*)([^h].*)#\\1${release_url}/\\2#" site/website/updates/latest-linux*.yml
       - name: Commit website feed
         working-directory: site
         shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add website/updates
+          git add -f website/updates/latest.yml website/updates/latest-linux*.yml
           if git diff --cached --quiet; then
             echo 'Website feed is already current.'
             exit 0

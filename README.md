@@ -26,7 +26,8 @@ designed against a pixel-sampled dark design system (see [`design-system.md`](de
   quick join straight into the game.
 - **Launch flow** — pre-launch validation (Java, files, disk), live log console with level
   filters, crash detection with a copyable report, playtime accounting.
-- **Auto-updates** — electron-updater against GitHub Releases: startup + periodic checks,
+- **Auto-updates** — electron-updater against the public
+  [`native-releases`](https://github.com/ikie-cli/native-releases/releases) feed: startup + periodic checks,
   background download, restart-to-apply. NSIS (Windows) with delta blockmaps; AppImage (Linux).
   `.deb` installs update via the system package manager.
 
