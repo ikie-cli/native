@@ -79,9 +79,13 @@ jobs:
             artifacts: |
               dist/*.AppImage
               dist/*.deb
+              dist/latest-linux*.yml
           - os: windows-2022
             script: package:win
-            artifacts: dist/*.exe
+            artifacts: |
+              dist/*.exe
+              dist/*.blockmap
+              dist/latest.yml
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
