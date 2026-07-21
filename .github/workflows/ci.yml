@@ -128,6 +128,11 @@ jobs:
               dist/*.dmg
               dist/*.blockmap
     runs-on: ${{ matrix.os }}
+    env:
+      # Empty unless the SignPath Foundation secret is configured. All signing
+      # steps below are gated on this, so CI keeps producing working unsigned
+      # builds until the project is approved and the secret is added.
+      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -152,6 +157,41 @@ jobs:
           --${{ matrix.platform }} --${{ matrix.arch }} --publish never
           --config.publish.channel=${{ contains(github.ref_name, '-nightly.') && 'nightly' || contains(github.ref_name, '-beta.') && 'beta' || 'latest' }}
           ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK != '' && '--config.mac.notarize=true' || '' }}
+
+      # --- SignPath Foundation code signing (Windows x64, free OSS program) ---
+      # Runs only when SIGNPATH_API_TOKEN is set. SignPath signs server-side on
+      # its HSM and requires manual approval of each request, so this cannot use
+      # electron-builder's inline sign hook — we build unsigned, submit the exe,
+      # wait for approval, download the signed exe, then repack update metadata.
+      - name: Upload unsigned exe for signing
+        id: unsigned-exe
+        if: ${{ matrix.platform == 'windows' && matrix.arch == 'x64' && env.SIGNPATH_API_TOKEN != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: unsigned-win-x64
+          path: dist/*.exe
+          if-no-files-found: error
+          retention-days: 1
+      - name: Submit to SignPath and download signed exe
+        if: ${{ matrix.platform == 'windows' && matrix.arch == 'x64' && env.SIGNPATH_API_TOKEN != '' }}
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ env.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_ARTIFACT_CONFIG_SLUG }}
+          github-artifact-id: ${{ steps.unsigned-exe.outputs.artifact-id }}
+          wait-for-completion: true
+          # Manual approval can take a while; allow up to 30 minutes.
+          wait-for-completion-timeout-in-seconds: '1800'
+          # Overwrite the unsigned exe in place so the repack step and upload
+          # both operate on the signed binary.
+          output-artifact-directory: dist
+      - name: Repack update metadata from signed exe
+        if: ${{ matrix.platform == 'windows' && matrix.arch == 'x64' && env.SIGNPATH_API_TOKEN != '' }}
+        run: node scripts/repack-signed-win.mjs dist
+
       - uses: actions/upload-artifact@v6
         with:
           name: packages-${{ matrix.platform }}-${{ matrix.arch }}
