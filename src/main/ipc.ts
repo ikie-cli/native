@@ -19,6 +19,7 @@ import { ModpacksService } from './services/modpacks'
 import { ServersService, pingServer } from './services/servers'
 import { WorldsService } from './services/worlds'
 import { ScreenshotsService } from './services/screenshots'
+import { LogsService } from './services/logs'
 import { FilesService } from './services/files'
 import { IconsService } from './services/icons'
 import { fetchNews } from './services/news'
@@ -89,6 +90,7 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   const modpacks = new ModpacksService(db, instances, icons)
   const worlds = new WorldsService()
   const screenshots = new ScreenshotsService()
+  const logs = new LogsService()
   const files = new FilesService()
 
   const send = (channel: string, ...args: unknown[]): void => {
@@ -184,6 +186,11 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   // ---------- running games ----------
   ipcMain.handle(IPC.running.list, () => launcher.list())
   ipcMain.handle(IPC.running.logs, (_e, id: string) => launcher.logs(id))
+  ipcMain.handle(IPC.running.sessions, (_e, id: string) => logs.sessions(id))
+  ipcMain.handle(IPC.running.readSession, (_e, id: string, file: string) => logs.read(id, file))
+  ipcMain.handle(IPC.running.deleteSession, (_e, id: string, file: string) =>
+    logs.delete(id, file)
+  )
   launcher.on('changed', (list) => {
     send(IPC.running.onChanged, list)
     if (list.length === 0 && settings.get().launchBehavior === 'close' && !win.isVisible()) {

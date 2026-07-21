@@ -49,6 +49,9 @@ export const IPC = {
   running: {
     list: 'running:list',
     logs: 'running:logs',
+    sessions: 'running:sessions',
+    readSession: 'running:read-session',
+    deleteSession: 'running:delete-session',
     onChanged: 'running:changed',
     onLog: 'running:log',
     onCrash: 'running:crash'

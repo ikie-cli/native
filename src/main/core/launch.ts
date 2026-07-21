@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { spawn, type ChildProcess } from 'node:child_process'
-import { readdir, readFile, stat, statfs } from 'node:fs/promises'
+import { createWriteStream, type WriteStream } from 'node:fs'
+import { readdir, readFile, rename, rm, stat, statfs } from 'node:fs/promises'
 import { join } from 'node:path'
 import type {
   CrashInfo,
@@ -21,6 +22,7 @@ import { log } from '../logger'
 import os from 'node:os'
 
 const LOG_BUFFER_MAX = 5000
+const SESSION_KEEP = 20
 const APP_VERSION = process.env.npm_package_version ?? '0.1.0'
 
 export interface LaunchDeps {
@@ -44,6 +46,10 @@ interface RunningEntry {
   game: RunningGame
   child: ChildProcess
   logs: LogLine[]
+  /** Append stream to this session's on-disk log file; null if it couldn't open. */
+  sink: WriteStream | null
+  /** Path of the in-progress `.log` file (renamed to `.crash.log` on crash). */
+  sessionPath: string
 }
 
 /**
@@ -274,7 +280,23 @@ export class LaunchManager extends EventEmitter {
 
       const startedAt = Date.now()
       const game: RunningGame = { instanceId: inst.id, pid: child.pid ?? -1, startedAt }
-      const entry: RunningEntry = { game, child, logs: [] }
+
+      // Persist this session to disk so logs survive after the game exits.
+      // One file per launch, named by start time; opened best-effort — a failure
+      // to open the sink must never abort the launch.
+      const logsDir = paths.instanceLogsDir(inst.id)
+      const sessionPath = join(logsDir, `${startedAt}.log`)
+      let sink: WriteStream | null = null
+      try {
+        await ensureDir(logsDir)
+        sink = createWriteStream(sessionPath, { flags: 'a' })
+        sink.on('error', (err) => log.warn(`session log write failed: ${err.message}`))
+        sink.write(`# ${inst.name} — started ${new Date(startedAt).toISOString()}\n`)
+      } catch (err) {
+        log.warn(`could not open session log: ${(err as Error).message}`)
+      }
+
+      const entry: RunningEntry = { game, child, logs: [], sink, sessionPath }
       this.running.set(inst.id, entry)
       this.emit('changed', this.list())
 
@@ -285,6 +307,7 @@ export class LaunchManager extends EventEmitter {
           const entryLine: LogLine = { t: Date.now(), level: lvl, text: line }
           entry.logs.push(entryLine)
           if (entry.logs.length > LOG_BUFFER_MAX) entry.logs.splice(0, entry.logs.length - LOG_BUFFER_MAX)
+          entry.sink?.write(line + '\n')
           this.emit('log', inst.id, entryLine)
         }
       }
@@ -303,6 +326,8 @@ export class LaunchManager extends EventEmitter {
         // Crash detection: abnormal exit code or a fresh crash report.
         void this.detectCrash(inst, code, startedAt, entry.logs).then((crash) => {
           if (crash) this.emit('crash', crash)
+          // Close the session file, mark crashes, then prune old sessions.
+          void this.finalizeSession(inst.id, entry, crash != null)
         })
         log.info(`${inst.name} exited with code ${code}`)
       })
@@ -314,6 +339,50 @@ export class LaunchManager extends EventEmitter {
     } finally {
       this.preparing.delete(inst.id)
     }
+  }
+
+  /**
+   * Close a session's log stream, rename crashed sessions to `.crash.log` so the
+   * UI can flag them without reading contents, and prune to SESSION_KEEP newest.
+   */
+  private async finalizeSession(
+    instanceId: string,
+    entry: RunningEntry,
+    crashed: boolean
+  ): Promise<void> {
+    // Wait for the append stream to flush before renaming/pruning.
+    if (entry.sink) {
+      await new Promise<void>((resolve) => entry.sink!.end(resolve))
+    }
+    let finalPath = entry.sessionPath
+    if (crashed && entry.sink) {
+      const crashPath = entry.sessionPath.replace(/\.log$/, '.crash.log')
+      try {
+        await rename(entry.sessionPath, crashPath)
+        finalPath = crashPath
+      } catch (err) {
+        log.warn(`could not mark crash session: ${(err as Error).message}`)
+      }
+    }
+    void finalPath
+    await this.pruneSessions(instanceId)
+  }
+
+  /** Keep only the SESSION_KEEP most recent session files for an instance. */
+  private async pruneSessions(instanceId: string): Promise<void> {
+    const dir = paths.instanceLogsDir(instanceId)
+    let files: string[]
+    try {
+      files = (await readdir(dir)).filter((f) => f.endsWith('.log'))
+    } catch {
+      return
+    }
+    if (files.length <= SESSION_KEEP) return
+    // Filenames are `<startedAt>.log` / `<startedAt>.crash.log`; the leading
+    // epoch sorts chronologically as a string of equal-length integers.
+    files.sort()
+    const stale = files.slice(0, files.length - SESSION_KEEP)
+    await Promise.all(stale.map((f) => rm(join(dir, f), { force: true }).catch(() => {})))
   }
 
   private async detectCrash(
@@ -360,7 +429,7 @@ export class LaunchManager extends EventEmitter {
   }
 }
 
-function levelOf(line: string): LogLevel | null {
+export function levelOf(line: string): LogLevel | null {
   if (/\/(FATAL|ERROR)\]|^\s*(FATAL|ERROR)\b|Exception|\tat /.test(line)) return 'error'
   if (/\/WARN\]|^\s*WARN\b/.test(line)) return 'warn'
   if (/\/DEBUG\]|^\s*DEBUG\b/.test(line)) return 'debug'

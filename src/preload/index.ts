@@ -16,6 +16,7 @@ import type {
   LaunchValidation,
   LocalContentFile,
   LogLine,
+  LogSession,
   ModpackInstallResult,
   NewsItem,
   ProjectDetails,
@@ -106,6 +107,11 @@ const api = {
   running: {
     list: (): Promise<RunningGame[]> => ipcRenderer.invoke(IPC.running.list),
     logs: (id: string): Promise<LogLine[]> => ipcRenderer.invoke(IPC.running.logs, id),
+    sessions: (id: string): Promise<LogSession[]> => ipcRenderer.invoke(IPC.running.sessions, id),
+    readSession: (id: string, file: string): Promise<LogLine[]> =>
+      ipcRenderer.invoke(IPC.running.readSession, id, file),
+    deleteSession: (id: string, file: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.running.deleteSession, id, file),
     onChanged: (cb: (list: RunningGame[]) => void) => on(IPC.running.onChanged, cb),
     onLog: (cb: (instanceId: string, lines: LogLine[]) => void) => on(IPC.running.onLog, cb),
     onCrash: (cb: (crash: CrashInfo) => void) => on(IPC.running.onCrash, cb)
