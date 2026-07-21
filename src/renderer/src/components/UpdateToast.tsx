@@ -14,9 +14,12 @@ export function UpdateToast(): React.JSX.Element {
 
   const visible =
     !dismissed &&
-    (state.status === 'available' || state.status === 'downloading' || state.status === 'ready')
+    (state.status === 'available' ||
+      state.status === 'downloading' ||
+      state.status === 'ready' ||
+      state.status === 'error')
 
-  const version = visible ? state.version : ''
+  const version = visible && 'version' in state ? state.version : ''
 
   return (
     <AnimatePresence>
@@ -36,6 +39,8 @@ export function UpdateToast(): React.JSX.Element {
                 <Check size={19} />
               ) : state.status === 'downloading' ? (
                 <Download size={18} />
+              ) : state.status === 'error' ? (
+                <RefreshCw size={19} />
               ) : (
                 <ArrowUpCircle size={19} />
               )}
@@ -46,14 +51,18 @@ export function UpdateToast(): React.JSX.Element {
                   ? `Native ${version} is ready to install`
                   : state.status === 'downloading'
                     ? `Downloading Native ${version}`
-                    : 'A new version of Native is here'}
+                    : state.status === 'error'
+                      ? 'Update interrupted'
+                      : 'A new version of Native is here'}
               </div>
               <div className="text-tiny opacity-80">
                 {state.status === 'ready'
                   ? 'Applied the next time the app starts'
                   : state.status === 'downloading'
                     ? 'You can keep playing — this runs in the background'
-                    : `Version ${version}`}
+                    : state.status === 'error'
+                      ? 'Your current installation is unchanged'
+                      : `Version ${version}${state.size ? ` · ${formatBytes(state.size)}` : ''}`}
               </div>
             </div>
             <button
@@ -128,6 +137,22 @@ export function UpdateToast(): React.JSX.Element {
                   </Button>
                   <Button size="sm" variant="secondary" onClick={dismiss}>
                     On next launch
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {state.status === 'error' && (
+              <>
+                <p className="mb-4 text-small text-content-secondary">
+                  {state.error}. Native kept the current version intact; check your connection and retry.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" icon={RefreshCw} onClick={() => void window.native.updater.check()} className="flex-1">
+                    Retry
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={dismiss}>
+                    Dismiss
                   </Button>
                 </div>
               </>

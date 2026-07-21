@@ -333,6 +333,7 @@ export interface AppSettings {
   msaClientId: string | null
   autoUpdateCheck: boolean
   autoUpdateDownload: boolean
+  updateChannel: 'latest' | 'beta' | 'nightly'
   /** First-run guided tour: flips true once finished or skipped. */
   onboardingDone: boolean
 }
@@ -350,6 +351,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   msaClientId: null,
   autoUpdateCheck: true,
   autoUpdateDownload: true,
+  updateChannel: 'latest',
   onboardingDone: false
 }
 
@@ -363,9 +365,9 @@ export interface UpdateProgress {
 export type UpdaterState =
   | { status: 'idle' }
   | { status: 'checking' }
-  | { status: 'available'; version: string; notes: string }
-  | { status: 'downloading'; version: string; notes: string; progress: UpdateProgress }
-  | { status: 'ready'; version: string; notes: string }
+  | { status: 'available'; version: string; notes: string; size: number }
+  | { status: 'downloading'; version: string; notes: string; size: number; progress: UpdateProgress }
+  | { status: 'ready'; version: string; notes: string; size: number }
   | { status: 'error'; error: string }
   | { status: 'unsupported'; reason: string }
 

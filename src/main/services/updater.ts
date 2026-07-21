@@ -4,8 +4,8 @@ import type { UpdaterState } from '@shared/types'
 import { log } from '../logger'
 
 /**
- * electron-updater integration (generic feed at nativelaunch.xyz/updates via
- * electron-builder publish config). Checks on startup + every 4 hours;
+ * electron-updater integration against the public GitHub release feed.
+ * Checks on startup + every 4 hours;
  * downloads silently in the background when enabled; UI applies via
  * quitAndInstall.
  *
@@ -19,7 +19,11 @@ export class UpdaterService extends EventEmitter {
   private autoDownload = true
   private updater: typeof import('electron-updater').autoUpdater | null = null
 
-  async init(opts: { autoCheck: boolean; autoDownload: boolean }): Promise<void> {
+  async init(opts: {
+    autoCheck: boolean
+    autoDownload: boolean
+    channel: 'latest' | 'beta' | 'nightly'
+  }): Promise<void> {
     this.autoDownload = opts.autoDownload
     if (!app.isPackaged && !process.env.NATIVE_UPDATER_DEV) {
       this.setState({ status: 'unsupported', reason: 'dev-build' })
@@ -43,6 +47,7 @@ export class UpdaterService extends EventEmitter {
       autoUpdater.logger = log
       autoUpdater.autoDownload = false // we orchestrate explicitly
       autoUpdater.autoInstallOnAppQuit = true
+      this.setChannel(opts.channel)
       if (process.env.NATIVE_UPDATER_DEV) {
         // Test hook: dev builds read a generic-provider feed config. When the
         // env var is a path, it points straight at the yml. Dev builds report
@@ -58,17 +63,19 @@ export class UpdaterService extends EventEmitter {
       autoUpdater.on('checking-for-update', () => this.setState({ status: 'checking' }))
       autoUpdater.on('update-not-available', () => this.setState({ status: 'idle' }))
       autoUpdater.on('update-available', (info) => {
-        const notes = typeof info.releaseNotes === 'string' ? info.releaseNotes : ''
-        this.setState({ status: 'available', version: info.version, notes })
+        const notes = releaseNotes(info.releaseNotes)
+        const size = info.files.reduce((total, file) => total + (file.size ?? 0), 0)
+        this.setState({ status: 'available', version: info.version, notes, size })
         if (this.autoDownload) void this.download()
       })
       autoUpdater.on('download-progress', (p) => {
         if (this.state.status === 'downloading' || this.state.status === 'available') {
-          const prev = this.state as { version: string; notes: string }
+          const prev = this.state as { version: string; notes: string; size: number }
           this.setState({
             status: 'downloading',
             version: prev.version,
             notes: prev.notes,
+            size: prev.size,
             progress: {
               percent: p.percent,
               bytesPerSecond: p.bytesPerSecond,
@@ -79,8 +86,9 @@ export class UpdaterService extends EventEmitter {
         }
       })
       autoUpdater.on('update-downloaded', (info) => {
-        const notes = typeof info.releaseNotes === 'string' ? info.releaseNotes : ''
-        this.setState({ status: 'ready', version: info.version, notes })
+        const notes = releaseNotes(info.releaseNotes)
+        const size = info.files.reduce((total, file) => total + (file.size ?? 0), 0)
+        this.setState({ status: 'ready', version: info.version, notes, size })
       })
       autoUpdater.on('error', (err) => {
         log.warn(`[updater] ${err.message}`)
@@ -105,7 +113,7 @@ export class UpdaterService extends EventEmitter {
   async check(): Promise<void> {
     if (!this.updater) return
     try {
-      await this.updater.checkForUpdates()
+      await withRetries(() => this.updater!.checkForUpdates(), 3)
     } catch (err) {
       this.setState({ status: 'error', error: err instanceof Error ? err.message : String(err) })
     }
@@ -115,7 +123,7 @@ export class UpdaterService extends EventEmitter {
     if (!this.updater) return
     if (this.state.status !== 'available') return
     try {
-      await this.updater.downloadUpdate()
+      await withRetries(() => this.updater!.downloadUpdate(), 3)
     } catch (err) {
       this.setState({ status: 'error', error: err instanceof Error ? err.message : String(err) })
     }
@@ -129,8 +137,38 @@ export class UpdaterService extends EventEmitter {
     this.autoDownload = v
   }
 
+  setChannel(channel: 'latest' | 'beta' | 'nightly'): void {
+    if (!this.updater) return
+    this.updater.channel = channel
+    this.updater.allowPrerelease = channel !== 'latest'
+  }
+
   private setState(s: UpdaterState): void {
     this.state = s
     this.emit('state', s)
   }
+}
+
+function releaseNotes(notes: unknown): string {
+  if (typeof notes === 'string') return notes
+  if (!Array.isArray(notes)) return ''
+  return notes
+    .map((entry) => (entry && typeof entry === 'object' && 'note' in entry ? String(entry.note) : ''))
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+async function withRetries<T>(operation: () => Promise<T>, attempts: number): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error
+      if (attempt < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 1_000))
+      }
+    }
+  }
+  throw lastError
 }

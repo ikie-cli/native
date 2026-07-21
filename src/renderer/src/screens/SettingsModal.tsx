@@ -8,7 +8,7 @@ import { Modal, FieldLabel } from '@/components/ui/modal'
 import { Button, Input, Spinner, Toggle } from '@/components/ui/ui'
 import { Slider } from '@/components/ui/slider'
 import { Select } from '@/components/ui/menu'
-import { cn } from '@/lib/util'
+import { cn, formatBytes } from '@/lib/util'
 
 type Pane = 'general' | 'java' | 'content' | 'updates' | 'about'
 
@@ -326,6 +326,18 @@ function UpdatesPane(): React.JSX.Element {
         <Row title="Download updates in the background" detail="Install on next restart when ready.">
           <Toggle checked={settings.autoUpdateDownload} onChange={(v) => void set({ autoUpdateDownload: v })} />
         </Row>
+        <Row title="Update channel" detail="Beta and nightly builds may be less stable.">
+          <Select
+            value={settings.updateChannel}
+            onChange={(value) => void set({ updateChannel: value })}
+            options={[
+              { value: 'latest', label: 'Stable' },
+              { value: 'beta', label: 'Beta' },
+              { value: 'nightly', label: 'Nightly' }
+            ]}
+            className="w-36"
+          />
+        </Row>
       </div>
       <div className="rounded-md2 bg-surface-inset p-4">
         <div className="flex items-center justify-between">
@@ -337,7 +349,7 @@ function UpdatesPane(): React.JSX.Element {
                   ? updater.reason
                   : 'Not available for this build'
                 : updater.status === 'available' || updater.status === 'ready'
-                  ? `Version ${'version' in updater ? updater.version : ''} ${updater.status}`
+                  ? `Version ${'version' in updater ? updater.version : ''} ${updater.status}${'size' in updater && updater.size ? ` · ${formatBytes(updater.size)}` : ''}`
                   : updater.status}
             </div>
           </div>

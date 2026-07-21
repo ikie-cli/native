@@ -423,6 +423,7 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   ipcMain.handle(IPC.settings.set, (_e, patch: Partial<AppSettings>) => {
     const next = settings.set(patch)
     if (patch.autoUpdateDownload !== undefined) updater.setAutoDownload(next.autoUpdateDownload)
+    if (patch.updateChannel !== undefined) updater.setChannel(next.updateChannel)
     send(IPC.settings.onChanged, next)
     return next
   })

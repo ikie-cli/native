@@ -1,6 +1,6 @@
-# Release checklist — Native 0.1.0
+# Release checklist — Native 3.2.0
 
-Verified on 2026-07-20. Gate order (identical to CI): typecheck → vitest (Node-ABI) →
+Verified on 2026-07-21. Gate order (identical to CI): typecheck → vitest (Node-ABI) →
 build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
 
 - [x] **Design system extracted and applied consistently** — every surface/typography/radius/
@@ -46,7 +46,10 @@ build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
 
 ## Ship steps
 
-1. `git tag v3.1.0 && git push origin v3.1.0` — CI packages Windows, Linux, and macOS
+1. Add Windows/macOS signing secrets before a production release (unsigned builds remain
+   available when secrets are absent).
+2. `git tag v3.2.0 && git push origin v3.2.0` — CI packages Windows, Linux, and macOS
    for x64/ARM64 and attaches their `latest*.yml` feeds to the GitHub Release.
-2. Microsoft sign-in works out of the box via msmc (official launcher OAuth client);
+3. CI anonymously verifies every public release asset before updating the legacy website feed.
+4. Microsoft sign-in works out of the box via msmc (official launcher OAuth client);
    `NATIVE_MSA_CLIENT_ID` remains available for orgs preferring their own registration.

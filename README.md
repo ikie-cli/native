@@ -28,7 +28,8 @@ designed against a pixel-sampled dark design system (see [`design-system.md`](de
   filters, crash detection with a copyable report, playtime accounting.
 - **Auto-updates** — electron-updater against the public
   [`native-releases`](https://github.com/ikie-cli/native-releases/releases) feed: startup + periodic checks,
-  background download, restart-to-apply. NSIS (Windows) with delta blockmaps; AppImage (Linux).
+  retrying background downloads, release notes, stable/beta/nightly channels, and restart-to-apply.
+  NSIS (Windows) uses delta blockmaps; AppImage updates atomically on Linux.
   `.deb` installs update via the system package manager.
 
 ## Install
@@ -87,6 +88,17 @@ npm run package:mac     # DMG (run on macOS, or CI)
 Releases: tag `v*` → CI builds all three platforms for x64 and ARM64, creates a GitHub
 Release, and attaches the `latest*.yml` feeds consumed by electron-updater. The `3.1.0`
 release is also mirrored to the legacy website feed so older installs migrate to GitHub.
+
+Release channels are selected by tag:
+
+- `v3.2.0` → stable (`latest`)
+- `v3.2.0-beta.1` → beta
+- `v3.2.0-nightly.1` → nightly
+
+CI publishes unsigned development builds by default. Production signing activates when
+repository secrets are configured: `WIN_CSC_LINK` + `WIN_CSC_KEY_PASSWORD` for Windows;
+`MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and
+`APPLE_TEAM_ID` for macOS signing and notarization.
 
 ## Architecture
 

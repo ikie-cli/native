@@ -111,7 +111,8 @@ if (!app.requestSingleInstanceLock()) {
     const settings = services.settings.get()
     void services.updater.init({
       autoCheck: settings.autoUpdateCheck && !process.env.NATIVE_E2E,
-      autoDownload: settings.autoUpdateDownload
+      autoDownload: settings.autoUpdateDownload,
+      channel: settings.updateChannel
     })
 
     if (isDev && process.env.ELECTRON_RENDERER_URL) {
