@@ -17,3 +17,6 @@ Native-*-windows-*.zip
 Native-Setup-*.exe
 website/downloads/
 website/updates/
+
+# Local Claude Code settings
+.claude/
