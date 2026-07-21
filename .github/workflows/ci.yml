@@ -150,8 +150,8 @@ jobs:
         run: >-
           npx electron-vite build && npx electron-builder
           --${{ matrix.platform }} --${{ matrix.arch }} --publish never
-          -c.publish.channel=${{ contains(github.ref_name, '-nightly.') && 'nightly' || contains(github.ref_name, '-beta.') && 'beta' || 'latest' }}
-          ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK != '' && '-c.mac.notarize=true' || '' }}
+          --config.publish.channel=${{ contains(github.ref_name, '-nightly.') && 'nightly' || contains(github.ref_name, '-beta.') && 'beta' || 'latest' }}
+          ${{ matrix.platform == 'mac' && secrets.MAC_CSC_LINK != '' && '--config.mac.notarize=true' || '' }}
       - uses: actions/upload-artifact@v6
         with:
           name: packages-${{ matrix.platform }}-${{ matrix.arch }}
