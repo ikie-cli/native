@@ -94,7 +94,9 @@ jobs:
               dist/latest-linux*.yml
           - platform: linux
             arch: arm64
-            os: ubuntu-24.04-arm
+            # electron-builder's deb toolchain (fpm) is x64-only; cross-package
+            # ARM64 on the x64 runner while Electron/native modules target ARM64.
+            os: ubuntu-24.04
             artifacts: |
               dist/*.AppImage
               dist/*.deb
