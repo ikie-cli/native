@@ -25,10 +25,10 @@ electronLanguages:
 win:
   target:
     - target: nsis
-      arch: [x64]
+      arch: [x64, arm64]
   executableName: Native
   icon: build/icon.ico
-  artifactName: ${productName}-Setup-${version}.${ext}
+  artifactName: ${productName}-Setup-${version}-${arch}.${ext}
 nsis:
   oneClick: false
   perMachine: false
@@ -65,14 +65,15 @@ appImage:
   artifactName: ${productName}-${version}-${arch}.${ext}
 
 mac:
-  # macOS is planned for a later phase; config kept minimal & cross-platform-safe.
   category: public.app-category.games
   target:
     - target: dmg
       arch: [arm64, x64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
 
-# Auto-update feed: served from our own domain (latest.yml / latest-linux*.yml
-# + artifacts live under website/updates/, deployed with the site).
+# Version 3.1.0 is mirrored to the legacy website feed by CI so older installs can
+# migrate. Apps installed from 3.1.0 onward check GitHub Releases directly.
 publish:
-  provider: generic
-  url: https://nativelaunch.xyz/updates
+  provider: github
+  owner: ikie-cli
+  repo: native

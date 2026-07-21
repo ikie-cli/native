@@ -1,6 +1,6 @@
 # Native
 
-A fast, beautiful Minecraft launcher for Windows and Linux. Electron + React + TypeScript,
+A fast, beautiful Minecraft launcher for Windows, Linux, and macOS. Electron + React + TypeScript,
 designed against a pixel-sampled dark design system (see [`design-system.md`](design-system.md)).
 
 ![CI](https://github.com/native-launcher/native/actions/workflows/ci.yml/badge.svg)
@@ -36,9 +36,9 @@ Grab the latest from **Releases**:
 
 | Platform | Artifact |
 |---|---|
-| Windows 10/11 | `Native-Setup-<version>.exe` (NSIS, auto-updates) |
+| Windows 10/11 | `Native-Setup-<version>-<arch>.exe` (NSIS, auto-updates) |
 | Linux | `Native-<version>-<arch>.AppImage` (auto-updates) or `.deb` |
-| macOS | **Planned — next phase.** The codebase is kept cross-platform-safe (rule-based OS handling, no platform hacks), so macOS ships without a rewrite. |
+| macOS 13+ | `Native-<version>-<arch>.dmg` (unsigned CI build until Apple signing is configured) |
 
 Native ships in **Mono** — a pure black & white identity (white accent on black, imagery
 desaturated until hover). Classic green palettes from the reference design remain available
@@ -80,10 +80,12 @@ enforces game ownership at sign-in; playing online requires owning Minecraft: Ja
 ```bash
 npm run package:linux   # AppImage + deb into dist/
 npm run package:win     # NSIS installer (run on Windows, or CI)
+npm run package:mac     # DMG (run on macOS, or CI)
 ```
 
-Releases: tag `v*` → CI builds both platforms and attaches artifacts plus the
-`latest*.yml` update feeds consumed by electron-updater.
+Releases: tag `v*` → CI builds all three platforms for x64 and ARM64, creates a GitHub
+Release, and attaches the `latest*.yml` feeds consumed by electron-updater. The `3.1.0`
+release is also mirrored to the legacy website feed so older installs migrate to GitHub.
 
 ## Architecture
 

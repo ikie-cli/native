@@ -40,13 +40,13 @@ build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
 - [x] **Full screenshot QA pass** — 17/17 screens ≥ their similarity bar (85%; empty/error
       states 75% — sparse by design) against the reference screenshots. Method + scores in
       [`qa-report.md`](qa-report.md); captures in `qa-screenshots/`.
-- [x] **macOS marked as planned** — README + `electron-builder.yml` keep a dormant mac
-      target; code paths are rule-based per-OS (no hacks), `osx` handled throughout the
-      rules engine, path/arch helpers, and Java detection.
+- [x] **macOS packages in CI** — GitHub-hosted Intel and Apple Silicon runners build x64
+      and ARM64 DMGs. Builds remain unsigned until Apple signing/notarization secrets are
+      configured; code paths are rule-based per OS and `osx` is handled throughout.
 
 ## Ship steps
 
-1. `git tag v0.1.0 && git push --tags` — CI packages both platforms and attaches
-   `latest.yml` / `latest-linux.yml` feeds to the GitHub Release.
+1. `git tag v3.1.0 && git push origin v3.1.0` — CI packages Windows, Linux, and macOS
+   for x64/ARM64 and attaches their `latest*.yml` feeds to the GitHub Release.
 2. Microsoft sign-in works out of the box via msmc (official launcher OAuth client);
    `NATIVE_MSA_CLIENT_ID` remains available for orgs preferring their own registration.

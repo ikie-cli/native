@@ -3,20 +3,29 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   test:
     name: Test (${{ matrix.os }})
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022]
+        os: [ubuntu-24.04, windows-2025, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -36,12 +45,11 @@ jobs:
       - run: npm run build
       - run: npm run rebuild:electron
 
-      # E2E + visual QA (Linux under Xvfb; Windows headed)
       - name: E2E (Linux)
         if: runner.os == 'Linux'
         run: xvfb-run -a --server-args='-screen 0 1600x900x24' npx playwright test --project e2e
-      - name: E2E (Windows)
-        if: runner.os == 'Windows'
+      - name: E2E (Windows/macOS)
+        if: runner.os != 'Linux'
         run: npx playwright test --project e2e
 
       - name: Visual QA (Linux)
@@ -51,78 +59,157 @@ jobs:
           node scripts/qa-report.mjs
       - name: Upload QA report
         if: runner.os == 'Linux' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: qa-report
           path: |
             qa-report.md
             qa-screenshots/
           if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results-${{ matrix.os }}
           path: test-results/
           if-no-files-found: ignore
+          retention-days: 14
 
   package:
-    name: Package (${{ matrix.os }})
+    name: Package (${{ matrix.platform }}-${{ matrix.arch }})
     needs: test
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
-            script: package:linux
+          - platform: linux
+            arch: x64
+            os: ubuntu-24.04
             artifacts: |
               dist/*.AppImage
               dist/*.deb
               dist/latest-linux*.yml
-          - os: windows-2022
-            script: package:win
+          - platform: linux
+            arch: arm64
+            os: ubuntu-24.04-arm
+            artifacts: |
+              dist/*.AppImage
+              dist/*.deb
+              dist/latest-linux*.yml
+          - platform: windows
+            arch: x64
+            os: windows-2025
             artifacts: |
               dist/*.exe
               dist/*.blockmap
               dist/latest.yml
+          - platform: windows
+            arch: arm64
+            os: windows-11-arm
+            artifacts: |
+              dist/*.exe
+              dist/*.blockmap
+          - platform: mac
+            arch: x64
+            os: macos-15-intel
+            artifacts: |
+              dist/*.dmg
+              dist/*.blockmap
+              dist/latest-mac.yml
+          - platform: mac
+            arch: arm64
+            os: macos-15
+            artifacts: |
+              dist/*.dmg
+              dist/*.blockmap
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run ${{ matrix.script }}
+      - name: Build ${{ matrix.platform }} package
+        run: npx electron-vite build && npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
         env:
-          # electron-builder auto-publishes when GH_TOKEN is present on tags
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-artifact@v4
+          # CI can create unsigned macOS builds until signing secrets are configured.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v6
         with:
-          name: packages-${{ matrix.os }}
+          name: packages-${{ matrix.platform }}-${{ matrix.arch }}
           path: ${{ matrix.artifacts }}
+          if-no-files-found: error
+          retention-days: 14
 
   release:
     name: Release (tagged)
     if: startsWith(github.ref, 'refs/tags/v')
     needs: package
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         with:
           pattern: packages-*
           merge-multiple: true
           path: dist
-      - name: Create GitHub Release with update feed
+      - name: Create GitHub Release with update feeds
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*.AppImage
             dist/*.deb
             dist/*.exe
+            dist/*.dmg
             dist/*.blockmap
             dist/latest*.yml
+          fail_on_unmatched_files: true
           generate_release_notes: true
+
+  bridge-legacy-feed:
+    name: Publish legacy website update
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          path: site
+      - uses: actions/download-artifact@v6
+        with:
+          name: packages-windows-x64
+          path: legacy/windows
+      - uses: actions/download-artifact@v6
+        with:
+          name: packages-linux-arm64
+          path: legacy/linux-arm64
+      - name: Mirror migration release to website feed
+        shell: bash
+        run: |
+          mkdir -p site/website/updates
+          cp legacy/windows/*.exe site/website/updates/
+          cp legacy/windows/*.blockmap site/website/updates/
+          cp legacy/windows/latest.yml site/website/updates/latest.yml
+          cp legacy/linux-arm64/*.AppImage site/website/updates/
+          cp legacy/linux-arm64/latest-linux*.yml site/website/updates/
+      - name: Commit website feed
+        working-directory: site
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add website/updates
+          if git diff --cached --quiet; then
+            echo 'Website feed is already current.'
+            exit 0
+          fi
+          git commit -m "Release: mirror ${{ github.ref_name }} to legacy update feed"
+          git push origin HEAD:main
