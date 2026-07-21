@@ -24,12 +24,12 @@ jobs:
         os: [ubuntu-24.04, windows-2025, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -59,7 +59,7 @@ jobs:
           node scripts/qa-report.mjs
       - name: Upload QA report
         if: runner.os == 'Linux' && always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: qa-report
           path: |
@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ matrix.os }}
           path: test-results/
@@ -134,8 +134,8 @@ jobs:
       # builds until the project is approved and the secret is added.
       SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -166,7 +166,7 @@ jobs:
       - name: Upload unsigned exe for signing
         id: unsigned-exe
         if: ${{ matrix.platform == 'windows' && matrix.arch == 'x64' && env.SIGNPATH_API_TOKEN != '' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: unsigned-win-x64
           path: dist/*.exe
@@ -192,7 +192,7 @@ jobs:
         if: ${{ matrix.platform == 'windows' && matrix.arch == 'x64' && env.SIGNPATH_API_TOKEN != '' }}
         run: node scripts/repack-signed-win.mjs dist
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: packages-${{ matrix.platform }}-${{ matrix.arch }}
           path: ${{ matrix.artifacts }}
@@ -207,13 +207,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           pattern: packages-*
           merge-multiple: true
           path: dist
       - name: Create GitHub Release with update feeds
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           repository: ikie-cli/native-releases
           token: ${{ secrets.RELEASE_TOKEN }}
@@ -235,8 +235,8 @@ jobs:
     needs: release
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: node scripts/verify-release.mjs ikie-cli/native-releases ${{ github.ref_name }}
@@ -249,15 +249,15 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
           path: site
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: packages-windows-x64
           path: legacy/windows
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: packages-linux-arm64
           path: legacy/linux-arm64
