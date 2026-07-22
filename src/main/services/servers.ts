@@ -164,10 +164,20 @@ interface ServerRow {
   instance_id: string | null
   added_at: number
   sort_index: number
+  last_played_at: number | null
+  total_play_ms: number
+  play_count: number
+  detected: number
 }
 
 export class ServersService {
-  constructor(private db: Database.Database) {}
+  constructor(private db: Database.Database) {
+    // A power loss can leave an open row behind. Do not count offline time on
+    // the next connection; preserve the attempt as a zero-duration session.
+    this.db
+      .prepare('UPDATE server_playtime_sessions SET ended_at = started_at WHERE ended_at IS NULL')
+      .run()
+  }
 
   list(): ServerEntry[] {
     const rows = this.db
@@ -179,7 +189,11 @@ export class ServersService {
       address: r.address,
       instanceId: r.instance_id,
       addedAt: r.added_at,
-      sortIndex: r.sort_index
+      sortIndex: r.sort_index,
+      lastPlayedAt: r.last_played_at,
+      totalPlayMs: r.total_play_ms,
+      playCount: r.play_count,
+      detected: r.detected === 1
     }))
   }
 
@@ -194,6 +208,76 @@ export class ServersService {
       )
       .run(id, name.trim(), address.trim(), instanceId, Date.now(), max + 1)
     return this.list().find((s) => s.id === id)!
+  }
+
+  /** Start a detected multiplayer session, automatically remembering new servers. */
+  beginSession(address: string, instanceId: string, startedAt = Date.now()): ServerEntry {
+    const normalized = normalizeAddress(address)
+    const tx = this.db.transaction(() => {
+      this.finishActiveSessions(instanceId, startedAt)
+
+      let entry = this.list().find((s) => normalizeAddress(s.address) === normalized)
+      if (!entry) {
+        const { host } = parseAddress(normalized)
+        entry = this.add(host, normalized, instanceId)
+        this.db.prepare('UPDATE servers SET detected = 1 WHERE id = ?').run(entry.id)
+      } else if (!entry.instanceId) {
+        this.db.prepare('UPDATE servers SET instance_id = ? WHERE id = ?').run(instanceId, entry.id)
+      }
+
+      this.db
+        .prepare(
+          `INSERT INTO server_playtime_sessions (server_id, instance_id, started_at, ended_at)
+           VALUES (?, ?, ?, NULL)`
+        )
+        .run(entry.id, instanceId, startedAt)
+      this.db
+        .prepare(
+          `UPDATE servers
+           SET last_played_at = ?, play_count = play_count + 1
+           WHERE id = ?`
+        )
+        .run(startedAt, entry.id)
+      return entry.id
+    })
+    const id = tx()
+    return this.list().find((s) => s.id === id)!
+  }
+
+  /** Finish the current detected multiplayer session for an instance. */
+  endSession(instanceId: string, endedAt = Date.now()): ServerEntry | null {
+    const tx = this.db.transaction(() => this.finishActiveSessions(instanceId, endedAt))
+    const serverId = tx()
+    return serverId ? (this.list().find((s) => s.id === serverId) ?? null) : null
+  }
+
+  private finishActiveSessions(instanceId: string, endedAt: number): string | null {
+    const rows = this.db
+      .prepare(
+        `SELECT id, server_id, started_at
+         FROM server_playtime_sessions
+         WHERE instance_id = ? AND ended_at IS NULL
+         ORDER BY started_at DESC`
+      )
+      .all(instanceId) as { id: number; server_id: string; started_at: number }[]
+    if (rows.length === 0) return null
+
+    for (const row of rows) {
+      const safeEnd = Math.max(row.started_at, endedAt)
+      const duration = safeEnd - row.started_at
+      this.db
+        .prepare('UPDATE server_playtime_sessions SET ended_at = ? WHERE id = ?')
+        .run(safeEnd, row.id)
+      this.db
+        .prepare(
+          `UPDATE servers
+           SET last_played_at = MAX(COALESCE(last_played_at, 0), ?),
+               total_play_ms = total_play_ms + ?
+           WHERE id = ?`
+        )
+        .run(safeEnd, duration, row.server_id)
+    }
+    return rows[0].server_id
   }
 
   update(id: string, patch: Partial<Pick<ServerEntry, 'name' | 'address' | 'instanceId'>>): void {
@@ -213,4 +297,12 @@ export class ServersService {
   remove(id: string): void {
     this.db.prepare('DELETE FROM servers WHERE id = ?').run(id)
   }
+}
+
+/** Canonical display/storage form so `host` and `host:25565` deduplicate. */
+export function normalizeAddress(address: string): string {
+  const { host, port } = parseAddress(address)
+  const cleanHost = host.replace(/^\[|\]$/g, '').toLowerCase()
+  const renderedHost = cleanHost.includes(':') ? `[${cleanHost}]` : cleanHost
+  return port === 25565 ? renderedHost : `${renderedHost}:${port}`
 }

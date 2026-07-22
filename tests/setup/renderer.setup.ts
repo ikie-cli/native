@@ -104,7 +104,8 @@ function makeNativeStub() {
       update: vi.fn().mockResolvedValue(undefined),
       remove: vi.fn().mockResolvedValue(undefined),
       ping: vi.fn(),
-      quickJoin: vi.fn()
+      quickJoin: vi.fn(),
+      onChanged: listeners()
     },
     news: { fetch: vi.fn().mockResolvedValue([]) },
     java: {

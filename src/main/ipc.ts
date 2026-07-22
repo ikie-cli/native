@@ -16,7 +16,7 @@ import { createMsmcClient } from './services/msmc'
 import { InstancesService } from './services/instances'
 import { ContentService, type SearchQuery } from './services/content'
 import { ModpacksService } from './services/modpacks'
-import { ServersService, pingServer } from './services/servers'
+import { ServersService, parseAddress, pingServer } from './services/servers'
 import { WorldsService } from './services/worlds'
 import { ScreenshotsService } from './services/screenshots'
 import { LogsService } from './services/logs'
@@ -352,11 +352,20 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
 
   // ---------- servers ----------
   ipcMain.handle(IPC.servers.list, () => servers.list())
-  ipcMain.handle(IPC.servers.add, (_e, name, address, instanceId) =>
-    servers.add(name, address, instanceId)
-  )
-  ipcMain.handle(IPC.servers.update, (_e, id, patch) => servers.update(id, patch))
-  ipcMain.handle(IPC.servers.remove, (_e, id) => servers.remove(id))
+  const sendServers = (): void => send(IPC.servers.onChanged, servers.list())
+  ipcMain.handle(IPC.servers.add, (_e, name, address, instanceId) => {
+    const entry = servers.add(name, address, instanceId)
+    sendServers()
+    return entry
+  })
+  ipcMain.handle(IPC.servers.update, (_e, id, patch) => {
+    servers.update(id, patch)
+    sendServers()
+  })
+  ipcMain.handle(IPC.servers.remove, (_e, id) => {
+    servers.remove(id)
+    sendServers()
+  })
   ipcMain.handle(IPC.servers.ping, (_e, address: string) => pingServer(address))
   ipcMain.handle(IPC.servers.quickJoin, async (_e, serverId: string) => {
     const entry = servers.list().find((s) => s.id === serverId)
@@ -365,12 +374,27 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
     if (!instId) throw new Error('Create an instance first to join servers')
     const inst = instances.get(instId)
     if (!inst) throw new Error('Instance not found')
-    const { parseAddress } = await import('./services/servers')
     const game = await launcher.launch(inst, {
       javaOverride: settings.get().javaPathOverride,
       server: parseAddress(entry.address)
     })
     return game
+  })
+  launcher.on('server-connect', (instanceId: string, address: string, startedAt: number) => {
+    try {
+      const entry = servers.beginSession(address, instanceId, startedAt)
+      log.info(`Detected multiplayer session on ${entry.address}`)
+      sendServers()
+    } catch (err) {
+      log.warn(`Could not record multiplayer session: ${(err as Error).message}`)
+    }
+  })
+  launcher.on('server-disconnect', (instanceId: string, endedAt: number) => {
+    try {
+      if (servers.endSession(instanceId, endedAt)) sendServers()
+    } catch (err) {
+      log.warn(`Could not finish multiplayer session: ${(err as Error).message}`)
+    }
   })
 
   // ---------- news ----------

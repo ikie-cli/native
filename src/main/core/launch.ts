@@ -50,6 +50,32 @@ interface RunningEntry {
   sink: WriteStream | null
   /** Path of the in-progress `.log` file (renamed to `.crash.log` on crash). */
   sessionPath: string
+  /** Multiplayer connection inferred from this process's client log. */
+  activeServer: { address: string; connectedAt: number } | null
+}
+
+/**
+ * Minecraft logs multiplayer joins as `Connecting to host, port`. Some loader
+ * stacks use `host:port` or include the resolved IP after a slash, so accept
+ * those forms while rejecting unrelated chat text.
+ */
+export function serverAddressFromLog(line: string): string | null {
+  const comma = line.match(/\bConnecting to\s+(.+?),\s*(\d{1,5})\s*$/i)
+  const colon = line.match(/\bConnecting to\s+(\[[^\]]+\]|[^\s,]+):(\d{1,5})\s*$/i)
+  const match = comma ?? colon
+  if (!match) return null
+
+  let host = match[1].trim().replace(/^\//, '')
+  if (!host.startsWith('[') && host.includes('/')) host = host.split('/')[0]
+  host = host.replace(/^\[|\]$/g, '').toLowerCase()
+  const port = Number(match[2])
+  if (!host || !Number.isInteger(port) || port < 1 || port > 65535) return null
+  const renderedHost = host.includes(':') ? `[${host}]` : host
+  return port === 25565 ? renderedHost : `${renderedHost}:${port}`
+}
+
+export function isServerDisconnectLog(line: string): boolean {
+  return /\b(?:Disconnecting from server|Lost connection|Connection (?:closed|reset))\b/i.test(line)
 }
 
 /**
@@ -296,7 +322,7 @@ export class LaunchManager extends EventEmitter {
         log.warn(`could not open session log: ${(err as Error).message}`)
       }
 
-      const entry: RunningEntry = { game, child, logs: [], sink, sessionPath }
+      const entry: RunningEntry = { game, child, logs: [], sink, sessionPath, activeServer: null }
       this.running.set(inst.id, entry)
       this.emit('changed', this.list())
 
@@ -309,6 +335,18 @@ export class LaunchManager extends EventEmitter {
           if (entry.logs.length > LOG_BUFFER_MAX) entry.logs.splice(0, entry.logs.length - LOG_BUFFER_MAX)
           entry.sink?.write(line + '\n')
           this.emit('log', inst.id, entryLine)
+
+          const serverAddress = serverAddressFromLog(line)
+          if (serverAddress && serverAddress !== entry.activeServer?.address) {
+            if (entry.activeServer) {
+              this.emit('server-disconnect', inst.id, entryLine.t)
+            }
+            entry.activeServer = { address: serverAddress, connectedAt: entryLine.t }
+            this.emit('server-connect', inst.id, serverAddress, entryLine.t)
+          } else if (entry.activeServer && isServerDisconnectLog(line)) {
+            entry.activeServer = null
+            this.emit('server-disconnect', inst.id, entryLine.t)
+          }
         }
       }
       child.stdout?.on('data', (d: Buffer) => push(d.toString(), 'info'))
@@ -320,6 +358,10 @@ export class LaunchManager extends EventEmitter {
 
       child.on('close', (code) => {
         const endedAt = Date.now()
+        if (entry.activeServer) {
+          entry.activeServer = null
+          this.emit('server-disconnect', inst.id, endedAt)
+        }
         this.running.delete(inst.id)
         this.emit('changed', this.list())
         this.deps.onPlaytime(inst.id, startedAt, endedAt)

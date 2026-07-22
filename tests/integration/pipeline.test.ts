@@ -136,6 +136,38 @@ describe.skipIf(!java)('download → install → launch pipeline', () => {
     expect(lm.list()).toHaveLength(0)
   })
 
+  it('emits multiplayer session events inferred from the client log', async () => {
+    const fake = await installFakeVersionFixture(fx, dir)
+    await writeLocalVersionJson(dir, fake.versionJson)
+    const lm = manager(fake.versionId, [])
+    const inst = fakeInstance(fake.versionId, { id: 'inst-server-log' })
+    const connected: [string, string, number][] = []
+    const disconnected: [string, number][] = []
+    lm.on('server-connect', (id: string, address: string, at: number) =>
+      connected.push([id, address, at])
+    )
+    lm.on('server-disconnect', (id: string, at: number) => disconnected.push([id, at]))
+
+    await lm.launch(inst, {
+      javaOverride: java,
+      server: { host: 'play.example.net', port: 25565 }
+    })
+    await new Promise<void>((resolve) => {
+      const check = (): void => {
+        if (lm.isRunning(inst.id)) setTimeout(check, 50)
+        else resolve()
+      }
+      check()
+    })
+
+    expect(connected).toHaveLength(1)
+    expect(connected[0][0]).toBe(inst.id)
+    expect(connected[0][1]).toBe('play.example.net')
+    expect(disconnected).toHaveLength(1)
+    expect(disconnected[0][0]).toBe(inst.id)
+    expect(disconnected[0][1]).toBeGreaterThanOrEqual(connected[0][2])
+  })
+
   it('saves the session to disk and reads it back via LogsService', async () => {
     const fake = await installFakeVersionFixture(fx, dir)
     await writeLocalVersionJson(dir, fake.versionJson)

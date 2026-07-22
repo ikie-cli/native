@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, Download, Loader2, PackageSearch, ThumbsUp } from 'lucide-react'
+import { Check, Download, ExternalLink, Loader2, PackageSearch, ThumbsUp } from 'lucide-react'
 import type {
   InstanceConfig,
   ProjectType,
@@ -117,12 +117,33 @@ function InstallButton({
 function InstallPackButton({ hit }: { hit: SearchHit }): React.JSX.Element {
   const push = useToasts((s) => s.push)
   const { go } = useNav()
+  const openProject = useModals((s) => s.openProject)
   const [state, setState] = useState<'idle' | 'loading' | 'done'>('idle')
+
+  if (hit.platform === 'curseforge') {
+    return (
+      <Button
+        size="sm"
+        variant="secondary"
+        icon={ExternalLink}
+        onClick={() =>
+          openProject({
+            platform: hit.platform,
+            projectId: hit.projectId,
+            instanceId: null,
+            projectType: 'modpack'
+          })
+        }
+      >
+        View
+      </Button>
+    )
+  }
 
   const install = async (): Promise<void> => {
     setState('loading')
     try {
-      const versions = await window.native.content.versions('modrinth', hit.projectId, null, null)
+      const versions = await window.native.content.versions(hit.platform, hit.projectId, null, null)
       const version: ProjectVersion | undefined = versions[0]
       if (!version) {
         push({ kind: 'error', title: 'No installable version', detail: `${hit.title} has no pack files.` })
@@ -201,7 +222,8 @@ function HitCard({
                 openProject({
                   platform: hit.platform,
                   projectId: hit.projectId,
-                  instanceId: instance?.id ?? null
+                  instanceId: instance?.id ?? null,
+                  projectType: hit.type
                 })
               }
               data-testid={`open-project-${hit.projectId}`}
@@ -248,12 +270,8 @@ export function DiscoverScreen({
   const [sort, setSort] = useState<'relevance' | 'downloads' | 'follows' | 'newest'>('relevance')
   const [query, setQuery] = useState('')
   const debounced = useDebounced(query, 350)
-  // Modpack installs create their own instance, so no instance filter applies;
-  // pack install is Modrinth-only.
+  // Modpack installs create their own instance, so no instance filter applies.
   const isPack = type === 'modpack'
-  useEffect(() => {
-    if (isPack && platform !== 'modrinth') setPlatform('modrinth')
-  }, [isPack, platform])
 
   const [result, setResult] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -293,7 +311,7 @@ export function DiscoverScreen({
         const res = await window.native.content.search({
           query: debounced,
           type,
-          platform: type === 'modpack' ? 'modrinth' : platform,
+          platform,
           sort,
           mcVersion: type === 'modpack' ? null : (instance?.mcVersion ?? null),
           loader: type === 'mod' && instance && instance.loader !== 'vanilla' ? instance.loader : null,
@@ -346,14 +364,10 @@ export function DiscoverScreen({
           <Select
             value={platform}
             onChange={setPlatform}
-            options={
-              isPack
-                ? [{ value: 'modrinth', label: 'Modrinth' }]
-                : [
-                    { value: 'modrinth', label: 'Modrinth' },
-                    { value: 'curseforge', label: 'CurseForge' }
-                  ]
-            }
+            options={[
+              { value: 'modrinth', label: 'Modrinth' },
+              { value: 'curseforge', label: 'CurseForge' }
+            ]}
           />
           <Select
             label="Sort"
@@ -388,7 +402,9 @@ export function DiscoverScreen({
 
       {isPack ? (
         <div className="mt-2 text-small text-content-muted">
-          Installing a modpack creates a new instance with the pack's loader and version.
+          {platform === 'modrinth'
+            ? "Installing a modpack creates a new instance with the pack's loader and version."
+            : 'CurseForge packs are browsable here and open on CurseForge for installation.'}
         </div>
       ) : (
         instance && (

@@ -210,7 +210,8 @@ const api = {
     ): Promise<void> => ipcRenderer.invoke(IPC.servers.update, id, patch),
     remove: (id: string): Promise<void> => ipcRenderer.invoke(IPC.servers.remove, id),
     ping: (address: string): Promise<ServerStatus> => ipcRenderer.invoke(IPC.servers.ping, address),
-    quickJoin: (id: string): Promise<RunningGame> => ipcRenderer.invoke(IPC.servers.quickJoin, id)
+    quickJoin: (id: string): Promise<RunningGame> => ipcRenderer.invoke(IPC.servers.quickJoin, id),
+    onChanged: (cb: (servers: ServerEntry[]) => void) => on(IPC.servers.onChanged, cb)
   },
   news: {
     fetch: (): Promise<NewsItem[]> => ipcRenderer.invoke(IPC.news.fetch)

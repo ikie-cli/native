@@ -48,10 +48,15 @@ public class FakeClient {
         for (String a : args) sb.append(a).append('\\n');
         Files.writeString(Path.of("launched.txt"), sb.toString());
         boolean crash = false, sleep = false;
-        for (String a : args) {
+        String server = null, port = "25565";
+        for (int i = 0; i < args.length; i++) {
+            String a = args[i];
             if (a.equals("--crash")) crash = true;
             if (a.equals("--sleep")) sleep = true;
+            if (a.equals("--server") && i + 1 < args.length) server = args[i + 1];
+            if (a.equals("--port") && i + 1 < args.length) port = args[i + 1];
         }
+        if (server != null) System.out.println("[Render thread/INFO]: Connecting to " + server + ", " + port);
         if (sleep) {
             System.out.println("[main/INFO]: FakeClient sleeping (waiting for stop)");
             Thread.sleep(120000);
@@ -63,6 +68,7 @@ public class FakeClient {
             System.err.println("[main/ERROR]: ---- Minecraft Crash Report ----");
             System.exit(255);
         }
+        if (server != null) System.out.println("[Render thread/INFO]: Disconnecting from server");
         System.out.println("[main/INFO]: FakeClient done");
     }
 }

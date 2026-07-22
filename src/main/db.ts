@@ -84,6 +84,26 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE content_index ADD COLUMN update_version_json TEXT;
   ALTER TABLE content_index ADD COLUMN update_checked_at INTEGER;
+  `,
+  // v5 — multiplayer history discovered from the live Minecraft client log.
+  // Aggregate fields make Home/Servers fast while the session rows retain the
+  // underlying play history for future detail views.
+  `
+  ALTER TABLE servers ADD COLUMN last_played_at INTEGER;
+  ALTER TABLE servers ADD COLUMN total_play_ms INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE servers ADD COLUMN play_count INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE servers ADD COLUMN detected INTEGER NOT NULL DEFAULT 0;
+  CREATE TABLE server_playtime_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    server_id TEXT NOT NULL,
+    instance_id TEXT,
+    started_at INTEGER NOT NULL,
+    ended_at INTEGER,
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE SET NULL
+  );
+  CREATE INDEX server_playtime_sessions_instance_active
+    ON server_playtime_sessions(instance_id, ended_at);
   `
 ]
 

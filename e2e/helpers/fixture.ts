@@ -224,6 +224,35 @@ export async function startE2EFixture(opts: { sleepClient?: boolean } = {}): Pro
     ],
     total_hits: 3
   })
+  fx.add('/img/cf-pack1.png', gradientBanner(128, 128, [130, 54, 32], [245, 145, 70]), {
+    contentType: 'image/png'
+  })
+  const curseforgePackSearch = new URLSearchParams({
+    gameId: '432',
+    classId: '4471',
+    searchFilter: '',
+    sortField: '6',
+    sortOrder: 'desc',
+    index: '0',
+    pageSize: '3'
+  })
+  json(fx, `/v1/mods/search?${curseforgePackSearch}`, {
+    data: [
+      {
+        id: 285109,
+        slug: 'all-the-mods-10',
+        name: 'All the Mods 10',
+        summary: 'A huge modern modpack with technology, magic, exploration, and polished quests.',
+        downloadCount: 18_400_000,
+        thumbsUpCount: 21_000,
+        dateModified: '2026-07-19T00:00:00Z',
+        logo: { thumbnailUrl: `${fx.baseUrl}/img/cf-pack1.png` },
+        authors: [{ name: 'ATMTeam' }],
+        categories: [{ name: 'All purpose' }]
+      }
+    ],
+    pagination: { totalCount: 1 }
+  })
   json(fx, '/v2/project/AANobbMI/version', [
     {
       id: 'ver-sodium-1',
@@ -292,6 +321,7 @@ export async function startE2EFixture(opts: { sleepClient?: boolean } = {}): Pro
     NATIVE_URL_RESOURCES: `${fx.baseUrl}/resources`,
     NATIVE_URL_FABRIC_META: fx.baseUrl,
     NATIVE_URL_MODRINTH: fx.baseUrl,
+    NATIVE_URL_CURSEFORGE: fx.baseUrl,
     NATIVE_URL_LAUNCHER_CONTENT: fx.baseUrl
   }
   return { fx, env, close: () => fx.close() }

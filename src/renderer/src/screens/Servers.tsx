@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Play, Plus, RefreshCw, Server, Signal, Trash2, Users } from 'lucide-react'
+import { Clock, History, Play, Plus, RefreshCw, Server, Signal, Sparkles, Trash2, Users } from 'lucide-react'
 import type { ServerEntry, ServerStatus } from '@shared/types'
-import { useInstances, useToasts, toastError } from '@/stores/data'
+import { useInstances, useServers, useToasts, toastError } from '@/stores/data'
 import { Button, EmptyState, IconButton, Input, Spinner } from '@/components/ui/ui'
 import { Modal, FieldLabel } from '@/components/ui/modal'
 import { Select } from '@/components/ui/menu'
-import { cn } from '@/lib/util'
+import { cn, formatPlaytime, timeAgo } from '@/lib/util'
 
 function latencyColor(ms: number | null): string {
   if (ms === null) return 'text-content-muted'
@@ -17,10 +17,12 @@ function latencyColor(ms: number | null): string {
 
 function ServerCard({
   entry,
+  instanceName,
   onRemove,
   onJoin
 }: {
   entry: ServerEntry
+  instanceName: string | null
   onRemove: () => void
   onJoin: () => void
 }): React.JSX.Element {
@@ -64,6 +66,11 @@ function ServerCard({
             className={cn('h-2 w-2 shrink-0 rounded-full', status?.online ? 'bg-accent' : 'bg-content-muted')}
             title={status?.online ? 'Online' : 'Offline'}
           />
+          {entry.detected && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-inset px-2 py-0.5 text-tiny font-semibold text-content-muted">
+              <Sparkles size={10} /> Auto-detected
+            </span>
+          )}
         </div>
         <div className="truncate text-small text-content-muted">{entry.address}</div>
         {pinging ? (
@@ -84,6 +91,20 @@ function ServerCard({
           </div>
         ) : (
           <div className="mt-1 text-tiny text-content-muted">{status?.error ?? 'Offline'}</div>
+        )}
+        {(entry.lastPlayedAt || entry.playCount > 0 || instanceName) && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-tiny text-content-muted">
+            {entry.lastPlayedAt && (
+              <span className="inline-flex items-center gap-1">
+                <Clock size={11} /> Played {timeAgo(entry.lastPlayedAt)}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1">
+              <History size={11} /> {formatPlaytime(entry.totalPlayMs)} across {entry.playCount}{' '}
+              {entry.playCount === 1 ? 'visit' : 'visits'}
+            </span>
+            {instanceName && <span>via {instanceName}</span>}
+          </div>
         )}
       </div>
       <IconButton icon={RefreshCw} label="Refresh" variant="ghost" onClick={() => void ping()} />
@@ -183,17 +204,18 @@ function AddServerModal({
 }
 
 export function ServersScreen(): React.JSX.Element {
-  const [servers, setServers] = useState<ServerEntry[] | null>(null)
+  const { servers, loaded, refresh } = useServers()
+  const instances = useInstances((s) => s.instances)
   const [addOpen, setAddOpen] = useState(false)
   const push = useToasts((s) => s.push)
 
-  const load = useCallback(async () => {
-    setServers(await window.native.servers.list())
-  }, [])
-
   useEffect(() => {
-    void load()
-  }, [load])
+    if (!loaded) void refresh()
+  }, [loaded, refresh])
+
+  const ordered = [...servers].sort(
+    (a, b) => (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0) || a.sortIndex - b.sortIndex
+  )
 
   const join = (entry: ServerEntry): void => {
     push({ kind: 'info', title: `Joining ${entry.name}…` })
@@ -210,27 +232,28 @@ export function ServersScreen(): React.JSX.Element {
       </div>
 
       <div className="mt-5 min-h-0 flex-1 overflow-y-auto">
-        {servers === null ? (
+        {!loaded ? (
           <div className="flex justify-center py-10">
             <Spinner size={24} />
           </div>
-        ) : servers.length === 0 ? (
+        ) : ordered.length === 0 ? (
           <EmptyState
             icon={Server}
             title="No servers added"
-            detail="Add a Minecraft server to see its status, player count, and latency — then jump straight in."
+            detail="Join any multiplayer server in Minecraft and Native will remember it automatically, or add one yourself."
             action={<Button icon={Plus} onClick={() => setAddOpen(true)}>Add server</Button>}
           />
         ) : (
           <div className="flex flex-col gap-3">
             <AnimatePresence initial={false}>
-              {servers.map((entry) => (
+              {ordered.map((entry) => (
                 <ServerCard
                   key={entry.id}
                   entry={entry}
+                  instanceName={instances.find((instance) => instance.id === entry.instanceId)?.name ?? null}
                   onJoin={() => join(entry)}
                   onRemove={() => {
-                    window.native.servers.remove(entry.id).then(load).catch(toastError)
+                    window.native.servers.remove(entry.id).catch(toastError)
                   }}
                 />
               ))}
@@ -239,7 +262,7 @@ export function ServersScreen(): React.JSX.Element {
         )}
       </div>
 
-      <AddServerModal open={addOpen} onClose={() => setAddOpen(false)} onAdded={load} />
+      <AddServerModal open={addOpen} onClose={() => setAddOpen(false)} onAdded={() => void refresh()} />
     </div>
   )
 }

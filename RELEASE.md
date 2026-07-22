@@ -1,6 +1,6 @@
-# Release checklist — Native 3.3.2
+# Release checklist — Native 3.3.3
 
-Verified on 2026-07-21. Gate order (identical to CI): typecheck → vitest (Node-ABI) →
+Verified on 2026-07-22. Gate order (identical to CI): typecheck → vitest (Node-ABI) →
 build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
 
 - [x] **Design system extracted and applied consistently** — every surface/typography/radius/
@@ -32,8 +32,8 @@ build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
       in the main process + worker thread with 10 Hz progress IPC and ~15 Hz log batching;
       cold start measured at **~950 ms** (3-run mean, 4-core arm64 under Xvfb) vs the 2 s
       budget.
-- [x] **All tests green** — 134 vitest tests (unit + integration + renderer stores; hermetic
-      fixture server for Mojang/Fabric/Modrinth/MSA endpoints; real compiled Java client for
+- [x] **All tests green** — 191 vitest tests (unit + integration + renderer stores; hermetic
+      fixture server for Mojang/Fabric/Modrinth/CurseForge/MSA endpoints; real compiled Java client for
       the download→install→launch→crash pipeline), 7 Playwright E2E (create → loader → mod →
       launch → process spawn verified → stop; options persistence across restart; servers;
       accounts; settings; updater), CI matrix runs the same on `windows-2022` + `ubuntu-22.04`.
@@ -50,7 +50,7 @@ build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
    available; unsigned packages remain publishable in the meantime.
 2. Cloudflare Pages deploys pushes through its Git integration. Optional API/account/project
    secrets enable the explicit Wrangler deployment path.
-3. `git tag v3.3.2 && git push origin v3.3.2` — CI packages Windows, Linux, and macOS
+3. `git tag v3.3.3 && git push origin v3.3.3` — CI packages Windows, Linux, and macOS
    for x64/ARM64, merges architecture-correct update feeds, and publishes the release.
 4. CI validates every feed entry against public release assets, mirrors stable migration
    feeds, and deploys the website.

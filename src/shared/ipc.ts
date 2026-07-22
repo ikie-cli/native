@@ -100,7 +100,8 @@ export const IPC = {
     update: 'servers:update',
     remove: 'servers:remove',
     ping: 'servers:ping',
-    quickJoin: 'servers:quick-join'
+    quickJoin: 'servers:quick-join',
+    onChanged: 'servers:changed'
   },
   news: {
     fetch: 'news:fetch'

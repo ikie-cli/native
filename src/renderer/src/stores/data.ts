@@ -11,6 +11,7 @@ import type {
   LogLine,
   NewsItem,
   RunningGame,
+  ServerEntry,
   UpdaterState,
   VersionManifest
 } from '@shared/types'
@@ -99,6 +100,20 @@ export const useRunning = create<RunningState>((set, get) => ({
     set((s) => ({ logs: { ...s.logs, [id]: lines } }))
   },
   clearCrash: () => set({ crash: null })
+}))
+
+/* ---------------- multiplayer servers ---------------- */
+
+interface ServersState {
+  servers: ServerEntry[]
+  loaded: boolean
+  refresh: () => Promise<void>
+}
+
+export const useServers = create<ServersState>((set) => ({
+  servers: [],
+  loaded: false,
+  refresh: async () => set({ servers: await window.native.servers.list(), loaded: true })
 }))
 
 /* ---------------- downloads ---------------- */
@@ -274,6 +289,7 @@ export async function bootstrapStores(): Promise<void> {
   n.running.onChanged((running) => useRunning.setState({ running }))
   n.running.onLog((id, lines) => useRunning.getState().appendLogs(id, lines))
   n.running.onCrash((crash) => useRunning.setState({ crash }))
+  n.servers.onChanged((servers) => useServers.setState({ servers, loaded: true }))
   n.downloads.onProgress((tasks) => useDownloads.setState({ tasks }))
   n.content.onUpdatesChanged((instanceId, result) =>
     useContentUpdates.setState((s) => ({ byInstance: { ...s.byInstance, [instanceId]: result } }))
@@ -281,11 +297,12 @@ export async function bootstrapStores(): Promise<void> {
   n.java.onAskDownload((request) => useJavaAsk.setState({ request }))
   n.updater.onState((state) => useUpdater.setState({ state, dismissed: false }))
 
-  const [settings, accounts, instances, running, tasks, updater] = await Promise.all([
+  const [settings, accounts, instances, running, servers, tasks, updater] = await Promise.all([
     n.settings.get(),
     n.auth.list(),
     n.instances.list(),
     n.running.list(),
+    n.servers.list(),
     n.downloads.active(),
     n.updater.state()
   ])
@@ -293,6 +310,7 @@ export async function bootstrapStores(): Promise<void> {
   useAccounts.setState({ accounts })
   useInstances.setState({ instances, loaded: true })
   useRunning.setState({ running })
+  useServers.setState({ servers, loaded: true })
   useDownloads.setState({ tasks })
   useUpdater.setState({ state: updater })
 

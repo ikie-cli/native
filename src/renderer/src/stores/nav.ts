@@ -56,7 +56,12 @@ interface ModalState {
   /** News article open in the reader modal (id from useNews items). */
   newsItemId: string | null
   /** Project open in the mod detail modal. */
-  projectRef: { platform: 'modrinth' | 'curseforge'; projectId: string; instanceId: string | null } | null
+  projectRef: {
+    platform: 'modrinth' | 'curseforge'
+    projectId: string
+    instanceId: string | null
+    projectType?: ProjectType
+  } | null
   setSettingsOpen: (v: boolean) => void
   setCreateOpen: (v: boolean) => void
   setAccountsOpen: (v: boolean) => void

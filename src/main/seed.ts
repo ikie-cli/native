@@ -21,7 +21,16 @@ export function seedFromEnv(): void {
         active?: boolean
       }[]
       instances?: Record<string, unknown>[]
-      servers?: { id: string; name: string; address: string; instanceId?: string | null }[]
+      servers?: {
+        id: string
+        name: string
+        address: string
+        instanceId?: string | null
+        lastPlayedAt?: number | null
+        totalPlayMs?: number
+        playCount?: number
+        detected?: boolean
+      }[]
     }
     const db = openDb()
     if (seed.settings) {
@@ -74,9 +83,22 @@ export function seedFromEnv(): void {
     }
     ;(seed.servers ?? []).forEach((s, idx) => {
       db.prepare(
-        `INSERT OR REPLACE INTO servers (id, name, address, instance_id, added_at, sort_index)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      ).run(s.id, s.name, s.address, s.instanceId ?? null, Date.now(), idx)
+        `INSERT OR REPLACE INTO servers
+           (id, name, address, instance_id, added_at, sort_index,
+            last_played_at, total_play_ms, play_count, detected)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        s.id,
+        s.name,
+        s.address,
+        s.instanceId ?? null,
+        Date.now(),
+        idx,
+        s.lastPlayedAt ?? null,
+        s.totalPlayMs ?? 0,
+        s.playCount ?? 0,
+        s.detected ? 1 : 0
+      )
     })
     log.info(`Seeded database from ${file}`)
   } catch (err) {

@@ -16,14 +16,15 @@ designed against a pixel-sampled dark design system (see [`design-system.md`](de
   resolution, icon; playtime tracking.
 - **Mod loaders** — one-click Fabric, Quilt, Forge, and NeoForge installs with automatic
   Java matching (8 / 17 / 21, via Adoptium download when missing).
-- **Content** — Modrinth search built in (CurseForge with an API key): mods, resource packs,
-  shaders. One-click install with required-dependency resolution, enable/disable, local file
-  imports.
+- **Content** — Modrinth and CurseForge search built in: mods, modpacks, resource packs,
+  and shaders. Home blends popular packs from both catalogs. One-click install with
+  required-dependency resolution, enable/disable, and local file imports.
 - **Downloads** — parallel, resumable (HTTP Range), sha1-verified, with real speed/ETA.
   Corrupt or missing files self-heal on the next launch.
 - **Worlds & screenshots** — list/backup (zip)/delete worlds; in-app screenshot gallery.
-- **Servers** — add/edit/remove, live Server List Ping (MOTD, players, latency, favicon),
-  quick join straight into the game.
+- **Servers** — automatically detected from Minecraft connection logs with per-server
+  playtime, visit count, last-played history, and preferred instance. Includes live Server
+  List Ping (MOTD, players, latency, favicon) and quick join.
 - **Discord Rich Presence** — shows the current instance, Minecraft version, loader, and
   session time; reconnects automatically when Discord starts or restarts.
 - **Launch flow** — pre-launch validation (Java, files, disk), live log console with level
@@ -93,9 +94,9 @@ stable feeds for older installs, and deploys the website to Cloudflare Pages.
 
 Release channels are selected by tag:
 
-- `v3.3.2` → stable (`latest`)
-- `v3.3.2-beta.1` → beta
-- `v3.3.2-nightly.1` → nightly
+- `v3.3.3` → stable (`latest`)
+- `v3.3.3-beta.1` → beta
+- `v3.3.3-nightly.1` → nightly
 
 CI produces unsigned builds by default. macOS signing/notarization activates when `MAC_CSC_LINK`,
 `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`

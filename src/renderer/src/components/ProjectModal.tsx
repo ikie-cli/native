@@ -40,12 +40,14 @@ function VersionRow({
   v,
   installed,
   onInstall,
-  busy
+  busy,
+  actionLabel = 'Install'
 }: {
   v: ProjectVersion
   installed: boolean
   onInstall: () => void
   busy: boolean
+  actionLabel?: string
 }): React.JSX.Element {
   return (
     <div className="flex items-center gap-3 rounded-md2 bg-surface-raised px-4 py-3">
@@ -64,7 +66,7 @@ function VersionRow({
         </Button>
       ) : (
         <Button size="sm" variant="secondary" icon={busy ? undefined : Download} onClick={onInstall} disabled={busy}>
-          {busy ? <Spinner size={14} /> : 'Install'}
+          {busy ? <Spinner size={14} /> : actionLabel}
         </Button>
       )}
     </div>
@@ -116,8 +118,15 @@ export function ProjectModal(): React.JSX.Element {
 
   const install = async (v: ProjectVersion): Promise<void> => {
     if (!projectRef || !details) return
+    const projectType = details.projectType ?? projectRef.projectType ?? null
     // Modpacks become a new instance instead of installing into one.
-    if (details.projectType === 'modpack') {
+    if (projectType === 'modpack') {
+      // CurseForge packs use a different archive format. Keep their catalog
+      // fully browsable and hand installation to the canonical project page.
+      if (projectRef.platform === 'curseforge') {
+        if (details.links.website) await window.native.app.openExternal(details.links.website)
+        return
+      }
       setInstallingId(v.id)
       try {
         const res = await window.native.packs.installModrinth({
@@ -267,6 +276,12 @@ export function ProjectModal(): React.JSX.Element {
                       v={v}
                       installed={installedVersionIds.has(v.id)}
                       busy={installingId === v.id}
+                      actionLabel={
+                        (details.projectType ?? projectRef?.projectType) === 'modpack' &&
+                        projectRef?.platform === 'curseforge'
+                          ? 'CurseForge'
+                          : 'Install'
+                      }
                       onInstall={() => void install(v)}
                     />
                   ))}

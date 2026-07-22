@@ -149,6 +149,14 @@ export interface ServerEntry {
   instanceId: string | null
   addedAt: number
   sortIndex: number
+  /** Most recent detected multiplayer connection, including the current one. */
+  lastPlayedAt: number | null
+  /** Completed time spent connected to this server. */
+  totalPlayMs: number
+  /** Number of detected connection sessions. */
+  playCount: number
+  /** True when Native discovered this server from a Minecraft client log. */
+  detected: boolean
 }
 
 export interface ServerStatus {

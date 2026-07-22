@@ -121,8 +121,26 @@ export function defaultSeed(): unknown {
       }
     ],
     servers: [
-      { id: 'srv-1', name: 'Hypixel', address: 'mc.hypixel.net' },
-      { id: 'srv-2', name: 'BananaSMP', address: 'play.banana.example' },
+      {
+        id: 'srv-1',
+        name: 'Hypixel',
+        address: 'mc.hypixel.net',
+        instanceId: 'seed-vanilla',
+        lastPlayedAt: Date.now() - 2 * 3600_000,
+        totalPlayMs: 18 * 3600_000,
+        playCount: 27,
+        detected: true
+      },
+      {
+        id: 'srv-2',
+        name: 'BananaSMP',
+        address: 'play.banana.example',
+        instanceId: 'seed-fabric',
+        lastPlayedAt: Date.now() - 86_400_000,
+        totalPlayMs: 6 * 3600_000 + 24 * 60_000,
+        playCount: 9,
+        detected: true
+      },
       { id: 'srv-3', name: 'Local Test', address: '127.0.0.1:25599' }
     ]
   }

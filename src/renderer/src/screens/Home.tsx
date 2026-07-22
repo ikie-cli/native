@@ -1,16 +1,34 @@
 import { motion } from 'framer-motion'
-import { ChevronRight, Clock, Download, MoreVertical, PackageOpen, Play, Plus, Square } from 'lucide-react'
+import {
+  ChevronRight,
+  Clock,
+  Download,
+  History,
+  MoreVertical,
+  PackageOpen,
+  Play,
+  Plus,
+  Server,
+  Square
+} from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import type { InstanceConfig, SearchHit } from '@shared/types'
+import type { InstanceConfig, SearchHit, ServerEntry } from '@shared/types'
 import { LOADER_LABELS } from '@shared/types'
-import { useInstanceBusy, useInstances, useRunning, toastError, useToasts } from '@/stores/data'
+import {
+  useInstanceBusy,
+  useInstances,
+  useRunning,
+  useServers,
+  toastError,
+  useToasts
+} from '@/stores/data'
 import { useModals, useNav } from '@/stores/nav'
 import { InstanceIcon } from '@/components/InstanceIcon'
 import { LoaderMark } from '@/components/LoaderMark'
 import { Button, EmptyState } from '@/components/ui/ui'
 import { DropMenu } from '@/components/ui/menu'
 import { IconButton } from '@/components/ui/ui'
-import { formatCount, timeAgo } from '@/lib/util'
+import { formatCount, formatPlaytime, timeAgo } from '@/lib/util'
 import { Copy, FolderOpen, Trash2 } from 'lucide-react'
 
 function useLaunch(): (inst: InstanceConfig) => void {
@@ -136,21 +154,31 @@ function BestModpacks(): React.JSX.Element {
 
   useEffect(() => {
     let cancelled = false
-    window.native.content
-      .search({
+    const query = (platform: 'modrinth' | 'curseforge') =>
+      window.native.content.search({
         query: '',
         type: 'modpack',
-        platform: 'modrinth',
+        platform,
         sort: 'downloads',
         offset: 0,
         limit: 3
       })
-      .then((result) => {
-        if (!cancelled) setPacks(result.hits.slice(0, 3))
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true)
-      })
+    Promise.allSettled([query('modrinth'), query('curseforge')]).then((results) => {
+      if (cancelled) return
+      const modrinth = results[0].status === 'fulfilled' ? results[0].value.hits : []
+      const curseforge = results[1].status === 'fulfilled' ? results[1].value.hits : []
+      const mixed: SearchHit[] = []
+      for (let i = 0; i < Math.max(modrinth.length, curseforge.length); i++) {
+        if (modrinth[i]) mixed.push(modrinth[i])
+        if (curseforge[i]) mixed.push(curseforge[i])
+      }
+      const unique = mixed.filter(
+        (pack, index) =>
+          mixed.findIndex((other) => other.title.toLowerCase() === pack.title.toLowerCase()) === index
+      )
+      setPacks(unique.slice(0, 4))
+      setFailed(results.every((result) => result.status === 'rejected'))
+    })
     return () => {
       cancelled = true
     }
@@ -167,7 +195,9 @@ function BestModpacks(): React.JSX.Element {
             Best modpacks
             <ChevronRight size={20} className="transition-transform duration-fast group-hover:translate-x-0.5" />
           </button>
-          <p className="mt-1 text-small text-content-secondary">Popular packs players love on Modrinth.</p>
+          <p className="mt-1 text-small text-content-secondary">
+            Top community picks from Modrinth and CurseForge.
+          </p>
         </div>
         <button
           className="text-small font-semibold text-content-secondary hover:text-accent"
@@ -178,8 +208,8 @@ function BestModpacks(): React.JSX.Element {
       </div>
 
       {packs === null && !failed && (
-        <div className="grid grid-cols-3 gap-4" aria-label="Loading best modpacks">
-          {[0, 1, 2].map((key) => (
+        <div className="grid grid-cols-4 gap-4" aria-label="Loading best modpacks">
+          {[0, 1, 2, 3].map((key) => (
             <div key={key} className="h-40 animate-pulse rounded-card bg-surface-raised p-4">
               <div className="h-12 w-12 rounded-md2 bg-surface-input" />
               <div className="mt-4 h-4 w-2/3 rounded-full bg-surface-input" />
@@ -190,12 +220,17 @@ function BestModpacks(): React.JSX.Element {
       )}
 
       {packs && packs.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           {packs.map((pack) => (
             <button
               key={pack.projectId}
               onClick={() =>
-                openProject({ platform: 'modrinth', projectId: pack.projectId, instanceId: null })
+                openProject({
+                  platform: pack.platform,
+                  projectId: pack.projectId,
+                  instanceId: null,
+                  projectType: 'modpack'
+                })
               }
               className="group min-w-0 rounded-card bg-surface-raised p-4 text-left transition-all duration-fast hover:-translate-y-0.5 hover:bg-surface-hover hover:shadow-card"
               data-testid={`best-modpack-${pack.projectId}`}
@@ -213,8 +248,13 @@ function BestModpacks(): React.JSX.Element {
                     {pack.title}
                   </div>
                   <div className="mt-0.5 truncate text-tiny text-content-muted">by {pack.author}</div>
-                  <div className="mt-2 inline-flex items-center gap-1 text-tiny font-semibold text-content-secondary">
-                    <Download size={13} /> {formatCount(pack.downloads)}
+                  <div className="mt-2 flex items-center gap-2 text-tiny font-semibold text-content-secondary">
+                    <span className="inline-flex items-center gap-1">
+                      <Download size={13} /> {formatCount(pack.downloads)}
+                    </span>
+                    <span className="rounded-full bg-surface-inset px-2 py-0.5 capitalize text-content-muted">
+                      {pack.platform}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -238,8 +278,71 @@ function BestModpacks(): React.JSX.Element {
   )
 }
 
+function RecentServers({ servers }: { servers: ServerEntry[] }): React.JSX.Element | null {
+  const { go } = useNav()
+  const push = useToasts((s) => s.push)
+  const recent = [...servers]
+    .filter((server) => server.lastPlayedAt !== null)
+    .sort((a, b) => (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0))
+    .slice(0, 3)
+  if (recent.length === 0) return null
+
+  const join = (server: ServerEntry): void => {
+    push({ kind: 'info', title: `Joining ${server.name}…` })
+    window.native.servers.quickJoin(server.id).catch((err) =>
+      toastError(err, `Couldn't join ${server.name}`)
+    )
+  }
+
+  return (
+    <section className="mt-7" data-testid="recent-servers">
+      <div className="mb-3 flex items-end justify-between gap-4">
+        <div>
+          <button
+            className="group flex items-center gap-1 text-h2 font-bold text-content-primary hover:text-accent"
+            onClick={() => go({ name: 'servers' })}
+          >
+            Recent servers
+            <ChevronRight size={20} className="transition-transform group-hover:translate-x-0.5" />
+          </button>
+          <p className="mt-1 text-small text-content-secondary">Detected automatically from your game logs.</p>
+        </div>
+        <button
+          className="text-small font-semibold text-content-secondary hover:text-accent"
+          onClick={() => go({ name: 'servers' })}
+        >
+          Server history
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        {recent.map((server) => (
+          <div key={server.id} className="flex min-w-0 items-center gap-3 rounded-card bg-surface-raised p-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md2 bg-surface-inset text-content-muted">
+              <Server size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-small font-bold text-content-primary">{server.name}</div>
+              <div className="truncate text-tiny text-content-muted">{server.address}</div>
+              <div className="mt-1 flex items-center gap-2 text-tiny text-content-secondary">
+                <span className="inline-flex items-center gap-1">
+                  <Clock size={11} /> {formatPlaytime(server.totalPlayMs)}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <History size={11} /> {server.playCount} {server.playCount === 1 ? 'visit' : 'visits'}
+                </span>
+              </div>
+            </div>
+            <IconButton icon={Play} label={`Join ${server.name}`} variant="ghost" onClick={() => join(server)} />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export function HomeScreen(): React.JSX.Element {
   const { instances, loaded } = useInstances()
+  const servers = useServers((s) => s.servers)
   const setCreateOpen = useModals((s) => s.setCreateOpen)
 
   const recent = useMemo(
@@ -273,6 +376,7 @@ export function HomeScreen(): React.JSX.Element {
         ))}
       </div>
 
+      <RecentServers servers={servers} />
       <BestModpacks />
     </div>
   )

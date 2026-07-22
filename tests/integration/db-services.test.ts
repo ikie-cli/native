@@ -250,4 +250,32 @@ describe('ServersService CRUD', () => {
     s.remove(a.id)
     expect(s.list()).toHaveLength(1)
   })
+
+  it('discovers servers and records per-server multiplayer playtime', async () => {
+    const instances = new InstancesService(db, () => ({ memMin: 512, memMax: 4096 }))
+    const inst = await instances.create({ name: 'Multiplayer', mcVersion: '1.21.4', loader: 'vanilla' })
+    const s = new ServersService(db)
+    const start = Date.now() - 20 * 60_000
+
+    const detected = s.beginSession('PLAY.Example.net:25565', inst.id, start)
+    expect(detected.address).toBe('play.example.net')
+    expect(detected.detected).toBe(true)
+    expect(detected.instanceId).toBe(inst.id)
+    expect(detected.playCount).toBe(1)
+    expect(detected.lastPlayedAt).toBe(start)
+
+    const ended = s.endSession(inst.id, start + 20 * 60_000)!
+    expect(ended.totalPlayMs).toBe(20 * 60_000)
+    expect(ended.lastPlayedAt).toBe(start + 20 * 60_000)
+
+    s.beginSession('play.example.net', inst.id, start + 30 * 60_000)
+    s.endSession(inst.id, start + 35 * 60_000)
+    const history = s.list()
+    expect(history).toHaveLength(1)
+    expect(history[0].playCount).toBe(2)
+    expect(history[0].totalPlayMs).toBe(25 * 60_000)
+    expect(
+      (db.prepare('SELECT COUNT(*) AS n FROM server_playtime_sessions').get() as { n: number }).n
+    ).toBe(2)
+  })
 })
