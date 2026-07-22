@@ -1,11 +1,11 @@
-version: 3.4.0
+version: 3.4.1
 files:
-  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.4.0/Native-Setup-3.4.0-x64.exe
-    sha512: hgEed4zzHgYda5SUvBKpeYF9CukfngJbtfXzqfERFnPePmLUHmtEv33tTZSOGt29hgkKi4KCjG52fenjF3/yXA==
-    size: 101322854
-  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.4.0/Native-Setup-3.4.0-arm64.exe
-    sha512: zpliH9UvzN+Oq5ypu7Ct0HLklb88kQdQ53hyi3KpOKwfCsQszU3VdRZmUW/Mf+4Q36i68X3aIyksjSRSazwC0w==
-    size: 96984351
-path: Native-Setup-3.4.0-x64.exe
-sha512: hgEed4zzHgYda5SUvBKpeYF9CukfngJbtfXzqfERFnPePmLUHmtEv33tTZSOGt29hgkKi4KCjG52fenjF3/yXA==
-releaseDate: '2026-07-22T06:27:22.384Z'
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.4.1/Native-Setup-3.4.1-x64.exe
+    sha512: FkwBwIPFsP+QJOb/AdoMaeQnGdTO15k68HT7RYOUotfx5Sa2yOoBgI1Oirh/wBGHtU/4KnRrAcE5iBQsgTlclA==
+    size: 101761992
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.4.1/Native-Setup-3.4.1-arm64.exe
+    sha512: XJoMpO7R71W1LqQEkAiRX+UU8A656DWxG0Q1fUTVZ/PUTcjRihyBNFR4O0Kln0tDBwrVRb1NyPV/dHZJ1oowhg==
+    size: 97423593
+path: Native-Setup-3.4.1-x64.exe
+sha512: FkwBwIPFsP+QJOb/AdoMaeQnGdTO15k68HT7RYOUotfx5Sa2yOoBgI1Oirh/wBGHtU/4KnRrAcE5iBQsgTlclA==
+releaseDate: '2026-07-22T09:09:49.838Z'
