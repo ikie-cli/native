@@ -1,5 +1,5 @@
 {
-  "comment": "qa-screenshots/<name>.png \u2192 closest reference in screenshots/. Gallery maps to the tile-grid reference (ref-113521) \u2014 same raised-card grid structure; ref-113501's full-height skin viewer has no analogue in our layout.",
+  "comment": "qa-screenshots/<name>.png \u2192 closest reference in screenshots/. Gallery maps to the tile-grid reference (ref-113521) \u2014 same raised-card grid structure; ref-113501's full-height skin viewer has no analogue in our layout. Ranked is a dark spotlit tournament stage, closest to the dark console reference (ref-113614).",
   "mappings": {
     "home": "ref-113405.png",
     "home-empty": "ref-113405.png",
@@ -15,7 +15,7 @@
     "launch-console": "ref-113614.png",
     "servers": "ref-113521.png",
     "servers-empty": "ref-113521.png",
-    "ranked": "ref-113405.png",
+    "ranked": "ref-113614.png",
     "create-instance": "ref-113634.png",
     "settings": "ref-113645.png",
     "accounts": "ref-113623.png"

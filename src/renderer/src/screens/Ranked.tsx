@@ -1,21 +1,10 @@
 import { motion } from 'framer-motion'
-import {
-  Activity,
-  CircleDot,
-  Crown,
-  Flag,
-  Play,
-  RefreshCw,
-  Sparkles,
-  Timer,
-  Trophy
-} from 'lucide-react'
+import { Activity, CircleDot, Play, RefreshCw, Shield, Sparkles, Trophy } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { RankedPlayer, RankedStatus } from '@shared/types'
 import { Button, Chip } from '@/components/ui/ui'
 import { toastError, useInstances, useRunning, useToasts } from '@/stores/data'
-import findArt from '@/assets/ranked/find.png'
-import inviteArt from '@/assets/ranked/invite.png'
+import heroArt from '@/assets/ranked/hero.png'
 
 const EMPTY: RankedStatus = {
   configured: false,
@@ -24,6 +13,26 @@ const EMPTY: RankedStatus = {
   player: null,
   leaderboard: [],
   service: null
+}
+
+const TIERS = [
+  { name: 'Bronze', min: 0 },
+  { name: 'Silver', min: 850 },
+  { name: 'Gold', min: 1050 },
+  { name: 'Platinum', min: 1250 },
+  { name: 'Diamond', min: 1500 },
+  { name: 'Native Master', min: 1800 }
+]
+
+function tierInfo(rating: number): { name: string; progress: number } {
+  let index = 0
+  for (let i = 0; i < TIERS.length; i++) if (rating >= TIERS[i].min) index = i
+  const current = TIERS[index]
+  const next = TIERS[index + 1]
+  const progress = next
+    ? Math.max(4, Math.min(100, ((rating - current.min) / (next.min - current.min)) * 100))
+    : 100
+  return { name: current.name, progress }
 }
 
 export function RankedScreen(): React.JSX.Element {
@@ -86,201 +95,167 @@ export function RankedScreen(): React.JSX.Element {
         ? 'Launch ranked'
         : 'Set up ranked'
 
+  const displayName = loading
+    ? 'Loading…'
+    : (status.player?.username ?? (status.configured ? 'Reconnect required' : 'Not set up'))
+  const tier = status.player ? tierInfo(status.player.rating) : null
+
   return (
     <div className="min-h-full px-8 py-7" data-testid="ranked-screen">
-      {/* ---------- Hero ---------- */}
       <motion.section
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.32, ease: [0.25, 1, 0.5, 1] }}
-        className="relative overflow-hidden rounded-card border border-line-subtle bg-surface-raised"
+        transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+        className="relative flex min-h-[600px] flex-col overflow-hidden rounded-card border border-line-subtle bg-surface-inset"
       >
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-2/3 bg-gradient-to-l from-accent/[0.06] via-accent/[0.02] to-transparent" />
-        <div className="pointer-events-none absolute -right-10 top-1/2 h-[360px] w-[360px] -translate-y-1/2 rounded-full bg-accent/[0.06] blur-3xl" />
-        <div className="relative grid grid-cols-[1.14fr_0.86fr] items-center gap-4">
-          <div className="min-w-0 px-9 py-9">
-            <div className="mb-5 flex flex-wrap items-center gap-2">
-              <Chip icon={CircleDot} className={status.online ? 'text-content-primary' : 'text-danger'}>
-                {status.online ? 'SERVICE ONLINE' : 'SERVICE OFFLINE'}
-              </Chip>
-              <Chip>1.16.1 · FABRIC</Chip>
-            </div>
-            <h1 className="max-w-[520px] text-[38px] font-extrabold leading-[1.04] tracking-[-0.045em] text-content-primary">
-              Find a rival.{' '}
-              <span className="text-content-secondary">Race the same seed.</span>
-            </h1>
-            <p className="mt-4 max-w-[430px] text-body leading-6 text-content-secondary">
-              Two runners, one identical world. Native locks movement until a synchronized countdown, then tracks every milestone through the dragon.
-            </p>
-            <div className="mt-7 flex items-center gap-3">
-              <Button
-                icon={isRunning ? Activity : status.configured ? Play : Sparkles}
-                onClick={() => void action()}
-                disabled={working || loading || !status.online || isRunning}
-                className="min-w-[190px]"
-                data-testid="ranked-primary-action"
-              >
-                {actionLabel}
-              </Button>
-              <Button icon={RefreshCw} variant="ghost" onClick={() => void refresh()} disabled={loading}>
-                Refresh
-              </Button>
-            </div>
-            <LiveStats service={status.service} online={status.online} />
-            {status.error && <p className="mt-4 text-small text-danger">{status.error}</p>}
+        {/* Arena backdrop: a single spotlit stage, no busy imagery. */}
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-[58%] rounded-full bg-accent/[0.06] blur-[100px]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-line-strong to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/55 to-transparent" />
+
+        {/* Top bar */}
+        <header className="relative z-10 flex items-center justify-between px-7 py-5">
+          <div className="flex items-center gap-3">
+            <span className="text-h3 font-extrabold tracking-tight text-content-primary">NATIVE RANKED</span>
+            <Chip>SEASON ZERO</Chip>
+          </div>
+          <div className="flex items-center gap-2">
+            <Chip icon={CircleDot} className={status.online ? 'text-content-primary' : 'text-danger'}>
+              {status.online ? 'SERVICE ONLINE' : 'SERVICE OFFLINE'}
+            </Chip>
+            <Chip>1.16.1 · FABRIC</Chip>
+          </div>
+        </header>
+
+        {/* Stage: rank/stats · character · standings */}
+        <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)_minmax(0,0.96fr)] items-center gap-5 px-7">
+          <div className="flex flex-col gap-3">
+            <RankBadge player={status.player} rank={playerRank} tier={tier} configured={status.configured} />
+            <StatStrip player={status.player} />
           </div>
 
-          <div className="relative flex h-full min-h-[248px] items-center justify-center pr-6">
-            <motion.img
-              src={findArt}
-              alt=""
-              draggable={false}
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1, y: [0, -7, 0] }}
-              transition={{
-                opacity: { duration: 0.5 },
-                scale: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
-                y: { duration: 5.5, repeat: Infinity, ease: 'easeInOut' }
-              }}
-              className="pointer-events-none w-[266px] max-w-full select-none object-contain drop-shadow-[0_24px_44px_rgba(0,0,0,0.55)]"
-            />
-          </div>
+          <CharacterStage name={displayName} tierName={tier?.name ?? null} rating={status.player?.rating ?? null} />
+
+          <Standings players={status.leaderboard} loading={loading} currentId={status.player?.id} />
         </div>
+
+        {/* Bottom bar: the play CTA + live service pulse */}
+        <footer className="relative z-10 flex flex-col items-center gap-3 px-7 pb-8 pt-3">
+          <Button
+            icon={isRunning ? Activity : status.configured ? Play : Sparkles}
+            onClick={() => void action()}
+            disabled={working || loading || !status.online || isRunning}
+            data-testid="ranked-primary-action"
+            className="h-14 min-w-[300px] rounded-full px-10 text-[16px] font-extrabold shadow-popover"
+          >
+            {actionLabel}
+          </Button>
+          <div className="flex items-center gap-4 text-small text-content-muted">
+            <LivePulse service={status.service} online={status.online} />
+            <button
+              onClick={() => void refresh()}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 text-content-secondary transition-colors hover:text-content-primary disabled:opacity-40"
+            >
+              <RefreshCw size={14} strokeWidth={2} />
+              Refresh
+            </button>
+          </div>
+          {status.error && <p className="text-small text-danger">{status.error}</p>}
+        </footer>
       </motion.section>
-
-      {/* ---------- Profile + Leaderboard ---------- */}
-      <div className="mt-5 grid grid-cols-[0.8fr_1.2fr] gap-5">
-        <PlayerCard player={status.player} rank={playerRank} configured={status.configured} loading={loading} />
-        <Leaderboard players={status.leaderboard} loading={loading} currentId={status.player?.id} />
-      </div>
-
-      {/* ---------- How a race works ---------- */}
-      <section className="mt-5 grid grid-cols-[0.82fr_1.18fr] overflow-hidden rounded-card border border-line-subtle bg-surface-raised">
-        <div className="relative flex items-end justify-center overflow-hidden border-r border-line-subtle bg-surface-inset/60 px-4 pt-6">
-          <div className="pointer-events-none absolute -left-8 top-4 h-40 w-40 rounded-full bg-accent/[0.06] blur-2xl" />
-          <div className="absolute left-5 top-5">
-            <div className="text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">1 versus 1</div>
-            <div className="mt-1 text-h3 leading-tight text-content-primary">Bring a<br />challenger</div>
-          </div>
-          <img
-            src={inviteArt}
-            alt=""
-            draggable={false}
-            className="pointer-events-none max-h-[188px] w-auto select-none object-contain drop-shadow-[0_18px_32px_rgba(0,0,0,0.5)]"
-          />
-        </div>
-        <div className="grid grid-rows-3">
-          <Step
-            index="01"
-            icon={Sparkles}
-            title="Same seed, same second"
-            detail="Both players generate one signed world and stay frozen until the countdown hits zero."
-          />
-          <Step
-            index="02"
-            icon={Timer}
-            title="Live milestones"
-            detail="Nether, pearls, blaze rods, eyes — your pace and your rival's stream into the in-game HUD."
-            divided
-          />
-          <Step
-            index="03"
-            icon={Flag}
-            title="First to the dragon"
-            detail="The opening dragon kill takes the win. Ranked results settle Elo the moment it lands."
-            divided
-          />
-        </div>
-      </section>
     </div>
   )
 }
 
-function LiveStats({
-  service,
-  online
+function CharacterStage({
+  name,
+  tierName,
+  rating
 }: {
-  service: RankedStatus['service']
-  online: boolean
-}): React.JSX.Element | null {
-  if (!online || !service) return null
-  const items = [
-    { label: 'online', value: service.players },
-    { label: 'racing now', value: service.activeMatches },
-    { label: 'races run', value: service.completedMatches }
-  ]
+  name: string
+  tierName: string | null
+  rating: number | null
+}): React.JSX.Element {
   return (
-    <div className="mt-6 flex items-center gap-5 text-small text-content-muted">
-      <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent/60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-      </span>
-      {items.map((item, index) => (
-        <span key={item.label} className="flex items-center gap-1.5">
-          {index > 0 && <span className="mr-3 text-line-strong">·</span>}
-          <span className="font-mono font-semibold text-content-secondary">{item.value.toLocaleString()}</span>
-          {item.label}
-        </span>
-      ))}
+    <div className="relative flex h-full flex-col items-center justify-center">
+      {/* Grounding shadow under the character. */}
+      <div className="pointer-events-none absolute bottom-[76px] h-5 w-44 rounded-[100%] bg-black/60 blur-md" />
+      <img
+        src={heroArt}
+        alt=""
+        draggable={false}
+        className="relative w-[236px] max-w-full select-none object-contain drop-shadow-[0_22px_46px_rgba(0,0,0,0.6)]"
+      />
+      <div className="relative mt-2 text-center">
+        <div className="max-w-[220px] truncate text-h2 font-bold leading-tight text-content-primary">{name}</div>
+        <div className="mt-0.5 text-small text-content-secondary">
+          {tierName ? `${tierName}${rating != null ? ` · ${rating}` : ''}` : 'Set up to enter the season'}
+        </div>
+      </div>
     </div>
   )
 }
 
-function rankTier(rating: number): string {
-  if (rating >= 1800) return 'Native Master'
-  if (rating >= 1500) return 'Diamond'
-  if (rating >= 1250) return 'Platinum'
-  if (rating >= 1050) return 'Gold'
-  if (rating >= 850) return 'Silver'
-  return 'Bronze'
-}
-
-function PlayerCard({
+function RankBadge({
   player,
   rank,
-  configured,
-  loading
+  tier,
+  configured
 }: {
   player: RankedPlayer | null
   rank: number | null
+  tier: { name: string; progress: number } | null
   configured: boolean
-  loading: boolean
 }): React.JSX.Element {
-  const total = player ? player.wins + player.losses : 0
-  const winRate = total > 0 && player ? Math.round((player.wins / total) * 100) : 0
-  const name = loading ? 'Loading…' : (player?.username ?? (configured ? 'Reconnect required' : 'Not set up'))
   return (
-    <section className="rounded-card border border-line-subtle bg-surface-raised p-5">
-      <div className="flex items-start justify-between">
+    <div className="rounded-card border border-line-subtle bg-surface-raised/90 p-4 backdrop-blur-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md2 border border-line-strong bg-surface-input text-content-primary">
+          <Shield size={24} strokeWidth={1.6} />
+        </div>
         <div className="min-w-0">
-          <div className="text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">Your profile</div>
-          <div className="mt-2 truncate text-h2 text-content-primary">{name}</div>
-          {player && <div className="mt-0.5 text-small text-content-secondary">{rankTier(player.rating)}</div>}
-        </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md2 bg-surface-input text-content-primary">
-          <Crown size={22} />
+          <div className="text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">Your rank</div>
+          <div className="truncate text-h2 leading-tight text-content-primary">
+            {tier ? tier.name : configured ? 'Unranked' : 'Not set up'}
+          </div>
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <Metric label="Rating" value={player?.rating ?? '—'} />
-        <Metric label="Global rank" value={rank ? `#${rank}` : '—'} />
-        <Metric label="Wins" value={player?.wins ?? 0} />
-        <Metric label="Win rate" value={`${winRate}%`} />
+      <div className="mt-4 flex items-end justify-between">
+        <span className="font-mono text-[30px] font-extrabold leading-none text-content-primary">
+          {player?.rating ?? '—'}
+        </span>
+        <span className="text-small text-content-secondary">{rank ? `#${rank} global` : 'unranked'}</span>
       </div>
-    </section>
-  )
-}
-
-function Metric({ label, value }: { label: string; value: string | number }): React.JSX.Element {
-  return (
-    <div className="rounded-md2 bg-surface-inset px-4 py-3">
-      <div className="text-tiny font-semibold uppercase tracking-wider text-content-muted">{label}</div>
-      <div className="mt-1 text-h3 text-content-primary">{value}</div>
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-input">
+        <div className="h-full rounded-full bg-accent" style={{ width: `${tier ? tier.progress : 0}%` }} />
+      </div>
     </div>
   )
 }
 
-function Leaderboard({
+function StatStrip({ player }: { player: RankedPlayer | null }): React.JSX.Element {
+  const total = player ? player.wins + player.losses : 0
+  const winRate = total > 0 && player ? Math.round((player.wins / total) * 100) : 0
+  return (
+    <div className="grid grid-cols-3 overflow-hidden rounded-card border border-line-subtle bg-surface-raised/90 backdrop-blur-sm">
+      <Stat label="Wins" value={player?.wins ?? 0} />
+      <Stat label="Losses" value={player?.losses ?? 0} divided />
+      <Stat label="Win %" value={`${winRate}%`} divided />
+    </div>
+  )
+}
+
+function Stat({ label, value, divided }: { label: string; value: string | number; divided?: boolean }): React.JSX.Element {
+  return (
+    <div className={`px-3 py-3 text-center ${divided ? 'border-l border-line-subtle' : ''}`}>
+      <div className="text-h3 font-bold text-content-primary">{value}</div>
+      <div className="mt-0.5 text-tiny font-semibold uppercase tracking-wider text-content-muted">{label}</div>
+    </div>
+  )
+}
+
+function Standings({
   players,
   loading,
   currentId
@@ -290,17 +265,17 @@ function Leaderboard({
   currentId?: string
 }): React.JSX.Element {
   return (
-    <section className="overflow-hidden rounded-card border border-line-subtle bg-surface-raised">
-      <div className="flex items-center justify-between border-b border-line-subtle px-5 py-4">
+    <div className="overflow-hidden rounded-card border border-line-subtle bg-surface-raised/90 backdrop-blur-sm">
+      <div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
         <div>
           <div className="text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">Season zero</div>
-          <h2 className="mt-1 text-h3 text-content-primary">Leaderboard</h2>
+          <div className="mt-0.5 text-body font-bold text-content-primary">Standings</div>
         </div>
-        <Trophy size={20} className="text-content-secondary" />
+        <Trophy size={17} className="text-content-secondary" />
       </div>
-      <div className="px-3 py-2">
+      <div className="p-2">
         {loading && (
-          <div className="flex h-40 items-center justify-center text-content-muted">
+          <div className="flex h-[168px] items-center justify-center text-content-muted">
             <motion.span
               className="inline-block h-5 w-5 rounded-full border-2 border-content-muted border-t-accent"
               animate={{ rotate: 360 }}
@@ -309,65 +284,53 @@ function Leaderboard({
           </div>
         )}
         {!loading && players.length === 0 && (
-          <div className="flex h-40 flex-col items-center justify-center text-content-muted">
-            <Trophy size={26} strokeWidth={1.5} />
-            <span className="mt-2 text-small">The first race claims the first rank.</span>
+          <div className="flex h-[168px] flex-col items-center justify-center px-4 text-center text-content-muted">
+            <Trophy size={24} strokeWidth={1.5} />
+            <span className="mt-2 text-small">The first race claims the top seed.</span>
           </div>
         )}
         {!loading &&
-          players.slice(0, 7).map((player, index) => {
+          players.slice(0, 6).map((player, index) => {
             const mine = player.id === currentId
             return (
-              <motion.div
+              <div
                 key={player.id}
-                initial={{ opacity: 0, x: 6 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.03 }}
-                className={`grid grid-cols-[34px_1fr_58px_66px] items-center rounded-sm2 px-3 py-2.5 text-small ${
-                  mine ? 'bg-accent-tint' : 'odd:bg-surface-inset/50'
+                className={`grid grid-cols-[26px_1fr_auto] items-center gap-2 rounded-sm2 px-2.5 py-2 text-small ${
+                  mine ? 'bg-accent-tint' : ''
                 }`}
               >
-                <span
-                  className={`font-mono text-tiny font-bold ${index < 3 ? 'text-content-primary' : 'text-content-muted'}`}
-                >
+                <span className={`font-mono text-tiny font-bold ${index < 3 ? 'text-content-primary' : 'text-content-muted'}`}>
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <span className="truncate font-semibold text-content-primary">{player.username}</span>
-                <span className="text-right text-content-secondary">{player.wins}W</span>
-                <span className="text-right font-mono font-semibold text-content-primary">{player.rating}</span>
-              </motion.div>
+                <span className="font-mono font-semibold text-content-primary">{player.rating}</span>
+              </div>
             )
           })}
       </div>
-    </section>
+    </div>
   )
 }
 
-function Step({
-  index,
-  icon: Icon,
-  title,
-  detail,
-  divided
+function LivePulse({
+  service,
+  online
 }: {
-  index: string
-  icon: typeof Sparkles
-  title: string
-  detail: string
-  divided?: boolean
-}): React.JSX.Element {
+  service: RankedStatus['service']
+  online: boolean
+}): React.JSX.Element | null {
+  if (!online || !service) return null
   return (
-    <div className={`flex items-start gap-4 px-6 py-5 ${divided ? 'border-t border-line-subtle' : ''}`}>
-      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md2 bg-surface-input text-content-primary">
-        <Icon size={17} strokeWidth={2} />
-      </div>
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-tiny font-bold text-content-muted">{index}</span>
-          <span className="text-body font-bold text-content-primary">{title}</span>
-        </div>
-        <p className="mt-1 text-small leading-5 text-content-secondary">{detail}</p>
-      </div>
-    </div>
+    <span className="flex items-center gap-2">
+      <span className="relative flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent/60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+      </span>
+      <span>
+        <span className="font-mono font-semibold text-content-secondary">{service.players.toLocaleString()}</span> online
+        <span className="mx-2 text-line-strong">·</span>
+        <span className="font-mono font-semibold text-content-secondary">{service.activeMatches}</span> racing now
+      </span>
+    </span>
   )
 }

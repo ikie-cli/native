@@ -165,7 +165,7 @@ test('capture populated screens', async () => {
   // Native Ranked
   await page.getByLabel('Native Ranked').click()
   await expect(page.getByTestId('ranked-screen')).toBeVisible()
-  await expect(page.getByText('Race the same seed.')).toBeVisible()
+  await expect(page.getByTestId('ranked-primary-action')).toBeVisible()
   await shoot(page, 'ranked')
 
   // Modals are captured over the dense Home screen (references dim

@@ -24,6 +24,7 @@
     "start": "electron-vite preview",
     "build": "electron-vite build",
     "build:ranked": "node scripts/build-ranked.mjs",
+    "deploy:ranked-mod": "node scripts/deploy-ranked-mod.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
