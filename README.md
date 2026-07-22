@@ -24,6 +24,8 @@ designed against a pixel-sampled dark design system (see [`design-system.md`](de
 - **Worlds & screenshots** — list/backup (zip)/delete worlds; in-app screenshot gallery.
 - **Servers** — add/edit/remove, live Server List Ping (MOTD, players, latency, favicon),
   quick join straight into the game.
+- **Discord Rich Presence** — shows the current instance, Minecraft version, loader, and
+  session time; reconnects automatically when Discord starts or restarts.
 - **Launch flow** — pre-launch validation (Java, files, disk), live log console with level
   filters, crash detection with a copyable report, playtime accounting.
 - **Auto-updates** — electron-updater against the public
@@ -40,7 +42,7 @@ Grab the latest from **Releases**:
 |---|---|
 | Windows 10/11 | `Native-Setup-<version>-<arch>.exe` (NSIS, auto-updates) |
 | Linux | `Native-<version>-<arch>.AppImage` (auto-updates) or `.deb` |
-| macOS 13+ | `Native-<version>-<arch>.dmg` (unsigned CI build until Apple signing is configured) |
+| macOS 13+ | `Native-<version>-<arch>.dmg` (Apple Silicon and Intel) |
 
 Native ships in **Mono** — a pure black & white identity (white accent on black, imagery
 desaturated until hover). Classic green palettes from the reference design remain available
@@ -82,23 +84,26 @@ enforces game ownership at sign-in; playing online requires owning Minecraft: Ja
 ```bash
 npm run package:linux   # AppImage + deb into dist/
 npm run package:win     # NSIS installer (run on Windows, or CI)
-npm run package:mac     # DMG (run on macOS, or CI)
+npm run package:mac     # DMG + updater ZIP (run on macOS, or CI)
 ```
 
 Releases: tag `v*` → CI builds all three platforms for x64 and ARM64, creates a GitHub
-Release, and attaches the `latest*.yml` feeds consumed by electron-updater. The `3.1.0`
-release is also mirrored to the legacy website feed so older installs migrate to GitHub.
+Release, merges architecture-correct channel feeds consumed by electron-updater, mirrors
+stable feeds for older installs, and deploys the website to Cloudflare Pages.
 
 Release channels are selected by tag:
 
-- `v3.2.0` → stable (`latest`)
-- `v3.2.0-beta.1` → beta
-- `v3.2.0-nightly.1` → nightly
+- `v3.3.2` → stable (`latest`)
+- `v3.3.2-beta.1` → beta
+- `v3.3.2-nightly.1` → nightly
 
-CI publishes unsigned development builds by default. Production signing activates when
-repository secrets are configured: `WIN_CSC_LINK` + `WIN_CSC_KEY_PASSWORD` for Windows;
-`MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and
-`APPLE_TEAM_ID` for macOS signing and notarization.
+CI produces unsigned builds by default. macOS signing/notarization activates when `MAC_CSC_LINK`,
+`MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`
+are configured. Windows signing uses
+`WIN_CSC_LINK` + `WIN_CSC_KEY_PASSWORD` or the configured SignPath Foundation project.
+The website deploys through its Cloudflare Pages Git integration; optional
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_PAGES_PROJECT_NAME`
+secrets enable an explicit Wrangler deployment as well.
 
 ## Architecture
 

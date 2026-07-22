@@ -164,6 +164,66 @@ export async function startE2EFixture(opts: { sleepClient?: boolean } = {}): Pro
     ],
     total_hits: 2
   })
+  fx.add('/img/pack1.png', gradientBanner(128, 128, [45, 120, 70], [150, 225, 120]), {
+    contentType: 'image/png'
+  })
+  fx.add('/img/pack2.png', gradientBanner(128, 128, [58, 76, 150], [130, 180, 235]), {
+    contentType: 'image/png'
+  })
+  fx.add('/img/pack3.png', gradientBanner(128, 128, [130, 70, 38], [230, 170, 80]), {
+    contentType: 'image/png'
+  })
+  const packSearch = new URLSearchParams({
+    query: '',
+    facets: JSON.stringify([['project_type:modpack']]),
+    index: 'downloads',
+    offset: '0',
+    limit: '3'
+  })
+  json(fx, `/v2/search?${packSearch}`, {
+    hits: [
+      {
+        project_id: 'pack-fabulously-optimized',
+        slug: 'fabulously-optimized',
+        title: 'Fabulously Optimized',
+        author: 'Fabulously Optimized',
+        description: 'A fast, open-source Fabric pack focused on performance and quality-of-life improvements.',
+        icon_url: `${fx.baseUrl}/img/pack1.png`,
+        downloads: 12_800_000,
+        follows: 48_000,
+        date_modified: '2026-07-18T00:00:00Z',
+        categories: ['optimization'],
+        project_type: 'modpack'
+      },
+      {
+        project_id: 'pack-better-mc',
+        slug: 'better-mc',
+        title: 'Better MC',
+        author: 'LunaPixelStudios',
+        description: 'A feature-rich adventure pack that expands Minecraft while keeping its familiar feel.',
+        icon_url: `${fx.baseUrl}/img/pack2.png`,
+        downloads: 9_600_000,
+        follows: 31_000,
+        date_modified: '2026-07-16T00:00:00Z',
+        categories: ['adventure'],
+        project_type: 'modpack'
+      },
+      {
+        project_id: 'pack-prominence',
+        slug: 'prominence-ii',
+        title: 'Prominence II',
+        author: 'LunaPixelStudios',
+        description: 'Explore a progression-focused RPG world packed with quests, bosses, and new gear.',
+        icon_url: `${fx.baseUrl}/img/pack3.png`,
+        downloads: 7_400_000,
+        follows: 27_000,
+        date_modified: '2026-07-14T00:00:00Z',
+        categories: ['adventure', 'magic'],
+        project_type: 'modpack'
+      }
+    ],
+    total_hits: 3
+  })
   json(fx, '/v2/project/AANobbMI/version', [
     {
       id: 'ver-sodium-1',

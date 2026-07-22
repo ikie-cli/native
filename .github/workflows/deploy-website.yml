@@ -1,0 +1,40 @@
+name: Deploy website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/deploy-website.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Cloudflare Pages
+    runs-on: ubuntu-24.04
+    environment:
+      name: website-production
+      url: https://nativelaunch.xyz
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_PAGES_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Deploy
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_PAGES_PROJECT_NAME != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy website --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }} --branch=main
+      - name: Use Cloudflare Git integration
+        if: env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == '' || env.CLOUDFLARE_PAGES_PROJECT_NAME == ''
+        run: echo "Direct credentials are not configured; Cloudflare Pages deploys this push through its Git integration."

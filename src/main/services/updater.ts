@@ -48,7 +48,9 @@ function makeUpdaterLogger(onDelta: (mode: 'delta' | 'full', reason?: string) =>
 export class UpdaterService extends EventEmitter {
   private state: UpdaterState = { status: 'idle' }
   private timer: ReturnType<typeof setInterval> | null = null
+  private firstCheckTimer: ReturnType<typeof setTimeout> | null = null
   private autoDownload = true
+  private autoCheck = false
   private updater: typeof import('electron-updater').autoUpdater | null = null
   /** How the in-flight download is being fetched, for diagnostics + UI. */
   private deltaMode: 'delta' | 'full' | null = null
@@ -60,6 +62,7 @@ export class UpdaterService extends EventEmitter {
     channel: 'latest' | 'beta' | 'nightly'
   }): Promise<void> {
     this.autoDownload = opts.autoDownload
+    this.autoCheck = opts.autoCheck
     if (!app.isPackaged && !process.env.NATIVE_UPDATER_DEV) {
       this.setState({ status: 'unsupported', reason: 'dev-build' })
       return
@@ -145,12 +148,7 @@ export class UpdaterService extends EventEmitter {
         this.setState({ status: 'error', error: err.message })
       })
 
-      if (opts.autoCheck) {
-        // Don't slow cold start: first check after the window is up.
-        setTimeout(() => void this.check(), 8000).unref?.()
-        this.timer = setInterval(() => void this.check(), 4 * 60 * 60 * 1000)
-        this.timer.unref?.()
-      }
+      this.configureAutoCheck(this.autoCheck, 8000)
     } catch (err) {
       this.setState({ status: 'error', error: err instanceof Error ? err.message : String(err) })
     }
@@ -191,6 +189,12 @@ export class UpdaterService extends EventEmitter {
     this.autoDownload = v
   }
 
+  /** Apply the automatic-check setting immediately, without requiring a restart. */
+  setAutoCheck(v: boolean): void {
+    this.autoCheck = v
+    this.configureAutoCheck(v, 0)
+  }
+
   setChannel(channel: 'latest' | 'beta' | 'nightly'): void {
     if (!this.updater) return
     this.updater.channel = channel
@@ -200,6 +204,22 @@ export class UpdaterService extends EventEmitter {
   private setState(s: UpdaterState): void {
     this.state = s
     this.emit('state', s)
+  }
+
+  private configureAutoCheck(enabled: boolean, firstDelayMs: number): void {
+    if (this.firstCheckTimer) clearTimeout(this.firstCheckTimer)
+    if (this.timer) clearInterval(this.timer)
+    this.firstCheckTimer = null
+    this.timer = null
+    if (!enabled || !this.updater) return
+
+    this.firstCheckTimer = setTimeout(() => {
+      this.firstCheckTimer = null
+      void this.check()
+    }, firstDelayMs)
+    this.firstCheckTimer.unref?.()
+    this.timer = setInterval(() => void this.check(), 4 * 60 * 60 * 1000)
+    this.timer.unref?.()
   }
 }
 

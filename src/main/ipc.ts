@@ -436,6 +436,7 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   ipcMain.handle(IPC.settings.get, () => settings.get())
   ipcMain.handle(IPC.settings.set, (_e, patch: Partial<AppSettings>) => {
     const next = settings.set(patch)
+    if (patch.autoUpdateCheck !== undefined) updater.setAutoCheck(next.autoUpdateCheck)
     if (patch.autoUpdateDownload !== undefined) updater.setAutoDownload(next.autoUpdateDownload)
     if (patch.updateChannel !== undefined) updater.setChannel(next.updateChannel)
     if (patch.discordRpc !== undefined) discord.setEnabled(next.discordRpc)

@@ -46,7 +46,7 @@ export default function App(): React.JSX.Element {
     route.name === 'instance'
       ? `instance:${route.id}`
       : route.name === 'discover'
-        ? `discover:${route.instanceId ?? ''}`
+        ? `discover:${route.instanceId ?? ''}:${route.contentType ?? 'mod'}`
         : route.name
 
   return (
@@ -69,7 +69,9 @@ export default function App(): React.JSX.Element {
               <Suspense fallback={<ScreenFallback />}>
                 {route.name === 'home' && <HomeScreen />}
                 {route.name === 'library' && <LibraryScreen />}
-                {route.name === 'discover' && <DiscoverScreen instanceId={route.instanceId} />}
+                {route.name === 'discover' && (
+                  <DiscoverScreen instanceId={route.instanceId} contentType={route.contentType} />
+                )}
                 {route.name === 'instance' && <InstanceScreen id={route.id} tab={route.tab} />}
                 {route.name === 'servers' && <ServersScreen />}
               </Suspense>

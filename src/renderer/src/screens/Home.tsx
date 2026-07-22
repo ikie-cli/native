@@ -1,16 +1,16 @@
 import { motion } from 'framer-motion'
-import { ChevronRight, Clock, MoreVertical, Play, Plus, Square } from 'lucide-react'
-import { useMemo } from 'react'
-import type { InstanceConfig } from '@shared/types'
+import { ChevronRight, Clock, Download, MoreVertical, PackageOpen, Play, Plus, Square } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import type { InstanceConfig, SearchHit } from '@shared/types'
 import { LOADER_LABELS } from '@shared/types'
-import { useInstanceBusy, useInstances, useNews, useRunning, toastError, useToasts } from '@/stores/data'
+import { useInstanceBusy, useInstances, useRunning, toastError, useToasts } from '@/stores/data'
 import { useModals, useNav } from '@/stores/nav'
 import { InstanceIcon } from '@/components/InstanceIcon'
 import { LoaderMark } from '@/components/LoaderMark'
 import { Button, EmptyState } from '@/components/ui/ui'
 import { DropMenu } from '@/components/ui/menu'
 import { IconButton } from '@/components/ui/ui'
-import { timeAgo } from '@/lib/util'
+import { formatCount, timeAgo } from '@/lib/util'
 import { Copy, FolderOpen, Trash2 } from 'lucide-react'
 
 function useLaunch(): (inst: InstanceConfig) => void {
@@ -128,37 +128,112 @@ export function InstanceKebab({ inst }: { inst: InstanceConfig }): React.JSX.Ele
   )
 }
 
-function DiscoverStrip(): React.JSX.Element {
+function BestModpacks(): React.JSX.Element {
   const { go } = useNav()
-  const news = useNews((s) => s.items)
-  const openNews = useModals((s) => s.openNews)
-  const imgs = news.filter((n) => n.image).slice(0, 3)
-  if (imgs.length === 0) return <></>
+  const openProject = useModals((s) => s.openProject)
+  const [packs, setPacks] = useState<SearchHit[] | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    window.native.content
+      .search({
+        query: '',
+        type: 'modpack',
+        platform: 'modrinth',
+        sort: 'downloads',
+        offset: 0,
+        limit: 3
+      })
+      .then((result) => {
+        if (!cancelled) setPacks(result.hits.slice(0, 3))
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
-    <section className="mt-8">
-      <button
-        className="group mb-4 flex items-center gap-1 text-h2 font-bold text-content-primary hover:text-accent"
-        onClick={() => go({ name: 'discover' })}
-      >
-        Discover mods
-        <ChevronRight size={20} className="transition-transform duration-fast group-hover:translate-x-0.5" />
-      </button>
-      <div className="grid grid-cols-3 gap-4">
-        {imgs.map((n) => (
+    <section className="mt-8" data-testid="best-modpacks">
+      <div className="mb-4 flex items-end justify-between gap-4">
+        <div>
           <button
-            key={n.id}
-            onClick={() => openNews(n.id)}
-            className="group aspect-[16/9] overflow-hidden rounded-card bg-surface-raised"
+            className="group flex items-center gap-1 text-h2 font-bold text-content-primary hover:text-accent"
+            onClick={() => go({ name: 'discover', contentType: 'modpack' })}
           >
-            <img
-              src={n.image!}
-              alt={n.title}
-              loading="lazy"
-              className="mono-media h-full w-full object-cover transition-transform duration-page ease-out-quart group-hover:scale-105"
-            />
+            Best modpacks
+            <ChevronRight size={20} className="transition-transform duration-fast group-hover:translate-x-0.5" />
           </button>
-        ))}
+          <p className="mt-1 text-small text-content-secondary">Popular packs players love on Modrinth.</p>
+        </div>
+        <button
+          className="text-small font-semibold text-content-secondary hover:text-accent"
+          onClick={() => go({ name: 'discover', contentType: 'modpack' })}
+        >
+          Browse all
+        </button>
       </div>
+
+      {packs === null && !failed && (
+        <div className="grid grid-cols-3 gap-4" aria-label="Loading best modpacks">
+          {[0, 1, 2].map((key) => (
+            <div key={key} className="h-40 animate-pulse rounded-card bg-surface-raised p-4">
+              <div className="h-12 w-12 rounded-md2 bg-surface-input" />
+              <div className="mt-4 h-4 w-2/3 rounded-full bg-surface-input" />
+              <div className="mt-2 h-3 w-full rounded-full bg-surface-inset" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {packs && packs.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          {packs.map((pack) => (
+            <button
+              key={pack.projectId}
+              onClick={() =>
+                openProject({ platform: 'modrinth', projectId: pack.projectId, instanceId: null })
+              }
+              className="group min-w-0 rounded-card bg-surface-raised p-4 text-left transition-all duration-fast hover:-translate-y-0.5 hover:bg-surface-hover hover:shadow-card"
+              data-testid={`best-modpack-${pack.projectId}`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md2 bg-surface-inset text-content-muted">
+                  {pack.icon ? (
+                    <img src={pack.icon} alt="" loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <PackageOpen size={24} />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-body font-bold text-content-primary group-hover:text-accent">
+                    {pack.title}
+                  </div>
+                  <div className="mt-0.5 truncate text-tiny text-content-muted">by {pack.author}</div>
+                  <div className="mt-2 inline-flex items-center gap-1 text-tiny font-semibold text-content-secondary">
+                    <Download size={13} /> {formatCount(pack.downloads)}
+                  </div>
+                </div>
+              </div>
+              <p className="mt-3 line-clamp-2 text-small leading-relaxed text-content-secondary">
+                {pack.description}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(failed || packs?.length === 0) && (
+        <button
+          onClick={() => go({ name: 'discover', contentType: 'modpack' })}
+          className="flex w-full items-center justify-center gap-2 rounded-card bg-surface-raised px-4 py-8 text-body font-semibold text-content-secondary hover:bg-surface-hover hover:text-accent"
+        >
+          <PackageOpen size={20} /> Browse modpacks
+        </button>
+      )}
     </section>
   )
 }
@@ -171,7 +246,7 @@ export function HomeScreen(): React.JSX.Element {
     () =>
       [...instances]
         .sort((a, b) => (b.lastPlayedAt ?? b.createdAt) - (a.lastPlayedAt ?? a.createdAt))
-        .slice(0, 5),
+        .slice(0, 3),
     [instances]
   )
 
@@ -198,7 +273,7 @@ export function HomeScreen(): React.JSX.Element {
         ))}
       </div>
 
-      <DiscoverStrip />
+      <BestModpacks />
     </div>
   )
 }

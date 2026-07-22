@@ -1,5 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Cpu, Download, FolderCog, Info, RefreshCw, Rocket, Settings2 } from 'lucide-react'
+import {
+  Check,
+  Cpu,
+  Download,
+  FlaskConical,
+  FolderCog,
+  Info,
+  MoonStar,
+  RefreshCw,
+  Rocket,
+  Settings2,
+  ShieldCheck,
+  type LucideIcon
+} from 'lucide-react'
 import type { AppSettings, JavaInstall } from '@shared/types'
 import iconUrl from '@/assets/icon.png'
 import { useSettings, useUpdater, useToasts, toastError } from '@/stores/data'
@@ -18,6 +31,36 @@ const NAV: { id: Pane; label: string; icon: typeof Cpu }[] = [
   { id: 'content', label: 'Content', icon: FolderCog },
   { id: 'updates', label: 'Updates', icon: Rocket },
   { id: 'about', label: 'About', icon: Info }
+]
+
+const UPDATE_CHANNELS: Array<{
+  id: AppSettings['updateChannel']
+  label: string
+  detail: string
+  badge: string
+  icon: LucideIcon
+}> = [
+  {
+    id: 'latest',
+    label: 'Stable',
+    detail: 'Tested releases with the fewest surprises.',
+    badge: 'Recommended',
+    icon: ShieldCheck
+  },
+  {
+    id: 'beta',
+    label: 'Beta',
+    detail: 'Try polished features before stable users.',
+    badge: 'Early access',
+    icon: FlaskConical
+  },
+  {
+    id: 'nightly',
+    label: 'Nightly',
+    detail: 'Newest experimental builds for testers.',
+    badge: 'May break',
+    icon: MoonStar
+  }
 ]
 
 function Row({
@@ -320,6 +363,17 @@ function UpdatesPane(): React.JSX.Element {
   const updater = useUpdater((s) => s.state)
   const push = useToasts((s) => s.push)
 
+  const selectChannel = async (channel: AppSettings['updateChannel']): Promise<void> => {
+    if (channel === settings.updateChannel) return
+    await set({ updateChannel: channel })
+    push({
+      kind: 'info',
+      title: `Switched to ${UPDATE_CHANNELS.find((item) => item.id === channel)?.label ?? channel}`,
+      detail: settings.autoUpdateCheck ? 'Checking the new update feed now…' : 'Automatic checks are currently off.'
+    })
+    if (settings.autoUpdateCheck) void window.native.updater.check()
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="divide-y divide-line-subtle">
@@ -329,18 +383,60 @@ function UpdatesPane(): React.JSX.Element {
         <Row title="Download updates in the background" detail="Install on next restart when ready.">
           <Toggle checked={settings.autoUpdateDownload} onChange={(v) => void set({ autoUpdateDownload: v })} />
         </Row>
-        <Row title="Update channel" detail="Beta and nightly builds may be less stable.">
-          <Select
-            value={settings.updateChannel}
-            onChange={(value) => void set({ updateChannel: value })}
-            options={[
-              { value: 'latest', label: 'Stable' },
-              { value: 'beta', label: 'Beta' },
-              { value: 'nightly', label: 'Nightly' }
-            ]}
-            className="w-36"
-          />
-        </Row>
+      </div>
+      <div>
+        <div className="text-body font-semibold text-content-primary">Update channel</div>
+        <div className="mt-0.5 text-small text-content-secondary">
+          Choose how early you want new Native features. You can switch back at any time.
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-3" role="radiogroup" aria-label="Update channel">
+          {UPDATE_CHANNELS.map((channel) => {
+            const active = settings.updateChannel === channel.id
+            const Icon = channel.icon
+            return (
+              <button
+                key={channel.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                data-testid={`update-channel-${channel.id}`}
+                onClick={() => void selectChannel(channel.id)}
+                className={cn(
+                  'relative min-h-36 rounded-card border p-4 text-left transition-all duration-fast',
+                  active
+                    ? 'border-accent bg-accent-tint shadow-sm'
+                    : 'border-line-subtle bg-surface-inset hover:border-line-strong hover:bg-surface-hover'
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span
+                    className={cn(
+                      'flex h-9 w-9 items-center justify-center rounded-md2',
+                      active ? 'bg-accent text-accent-contrast' : 'bg-surface-input text-content-secondary'
+                    )}
+                  >
+                    <Icon size={18} />
+                  </span>
+                  {active && (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-contrast">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 text-body font-bold text-content-primary">{channel.label}</div>
+                <div className="mt-1 text-tiny leading-relaxed text-content-secondary">{channel.detail}</div>
+                <div
+                  className={cn(
+                    'mt-3 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                    active ? 'bg-accent text-accent-contrast' : 'bg-surface-input text-content-muted'
+                  )}
+                >
+                  {channel.badge}
+                </div>
+              </button>
+            )
+          })}
+        </div>
       </div>
       <div className="rounded-md2 bg-surface-inset p-4">
         <div className="flex items-center justify-between">

@@ -7,6 +7,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { DownloadTaskProgress } from '@shared/types'
 import { ensureDir, makeExecutable } from '../utils/fsx'
+import { USER_AGENT } from '../version'
 
 export interface DownloadItem {
   url: string
@@ -23,7 +24,6 @@ export interface TaskOptions {
   phase?: string
 }
 
-const UA = 'NativeLauncher/0.1.0 (native-launcher)'
 const MAX_ATTEMPTS = 4
 
 /**
@@ -230,7 +230,7 @@ export class DownloadTask extends EventEmitter {
       await rm(part, { force: true })
     }
 
-    const headers: Record<string, string> = { 'user-agent': UA }
+    const headers: Record<string, string> = { 'user-agent': USER_AGENT }
     if (offset > 0) headers.range = `bytes=${offset}-`
     const res = await fetch(item.url, { headers, signal: ac.signal })
     if (offset > 0 && res.status === 200) {

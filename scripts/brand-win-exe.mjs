@@ -22,6 +22,8 @@ const CODEPAGE = 1200 // UTF-16
 function main() {
   const exePath = resolve(process.argv[2] ?? join(root, 'dist', 'win-unpacked', 'Native.exe'))
   const icoPath = join(root, 'build', 'icon.ico')
+  const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  const [major, minor, patch] = version.split(/[.-]/).slice(0, 3).map(Number)
 
   if (!existsSync(exePath)) {
     throw new Error(`exe not found: ${exePath} — build it first (e.g. electron-builder --dir)`)
@@ -48,8 +50,8 @@ function main() {
 
   // ---- version info ----
   const vi = Resource.VersionInfo.createEmpty()
-  vi.setFileVersion(0, 1, 0, 0, LANG)
-  vi.setProductVersion(0, 1, 0, 0, LANG)
+  vi.setFileVersion(major, minor, patch, 0, LANG)
+  vi.setProductVersion(major, minor, patch, 0, LANG)
   vi.setStringValues(
     { lang: LANG, codepage: CODEPAGE },
     {
@@ -59,8 +61,8 @@ function main() {
       LegalCopyright: '© 2026 Native Labs',
       OriginalFilename: 'Native.exe',
       InternalName: 'Native',
-      FileVersion: '0.1.0',
-      ProductVersion: '0.1.0'
+      FileVersion: version,
+      ProductVersion: version
     }
   )
   vi.outputToResourceEntries(res.entries)

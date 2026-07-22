@@ -91,7 +91,7 @@ jobs:
             artifacts: |
               dist/*.AppImage
               dist/*.deb
-              dist/latest-linux*.yml
+              dist/release-meta-*.yml
           - platform: linux
             arch: arm64
             # electron-builder's deb toolchain (fpm) is x64-only; cross-package
@@ -100,33 +100,37 @@ jobs:
             artifacts: |
               dist/*.AppImage
               dist/*.deb
-              dist/latest-linux*.yml
+              dist/release-meta-*.yml
           - platform: windows
             arch: x64
             os: windows-2025
             artifacts: |
               dist/*.exe
               dist/*.blockmap
-              dist/latest.yml
+              dist/release-meta-*.yml
           - platform: windows
             arch: arm64
             os: windows-11-arm
             artifacts: |
               dist/*.exe
               dist/*.blockmap
+              dist/release-meta-*.yml
           - platform: mac
             arch: x64
             os: macos-15-intel
             artifacts: |
               dist/*.dmg
+              dist/*.zip
               dist/*.blockmap
-              dist/latest-mac.yml
+              dist/release-meta-*.yml
           - platform: mac
             arch: arm64
             os: macos-15
             artifacts: |
               dist/*.dmg
+              dist/*.zip
               dist/*.blockmap
+              dist/release-meta-*.yml
     runs-on: ${{ matrix.os }}
     env:
       # Empty unless the SignPath Foundation secret is configured. All signing
@@ -202,7 +206,15 @@ jobs:
           output-artifact-directory: dist
       - name: Repack update metadata from signed exe
         if: ${{ matrix.platform == 'windows' && matrix.arch == 'x64' && env.SIGNPATH_API_TOKEN != '' }}
-        run: node scripts/repack-signed-win.mjs dist
+        run: >-
+          node scripts/repack-signed-win.mjs dist
+          ${{ contains(github.ref_name, '-nightly.') && 'nightly' || contains(github.ref_name, '-beta.') && 'beta' || 'latest' }}
+
+      - name: Stage architecture-specific update metadata
+        run: >-
+          node scripts/stage-release-metadata.mjs dist
+          ${{ matrix.platform }} ${{ matrix.arch }}
+          ${{ contains(github.ref_name, '-nightly.') && 'nightly' || contains(github.ref_name, '-beta.') && 'beta' || 'latest' }}
 
       - uses: actions/upload-artifact@v6
         with:
@@ -219,11 +231,19 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
       - uses: actions/download-artifact@v6
         with:
           pattern: packages-*
           merge-multiple: true
           path: dist
+      - name: Merge architecture-specific update feeds
+        run: node scripts/prepare-release-metadata.mjs dist ${{ github.ref_name }}
       - name: Create GitHub Release with update feeds
         uses: softprops/action-gh-release@v2
         with:
@@ -236,8 +256,9 @@ jobs:
             dist/*.deb
             dist/*.exe
             dist/*.dmg
+            dist/*.zip
             dist/*.blockmap
-            dist/latest*.yml
+            dist/*.yml
           fail_on_unmatched_files: true
           generate_release_notes: true
 
@@ -260,26 +281,22 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_PAGES_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}
     steps:
       - uses: actions/checkout@v6
         with:
           ref: main
           path: site
-      - uses: actions/download-artifact@v6
-        with:
-          name: packages-windows-x64
-          path: legacy/windows
-      - uses: actions/download-artifact@v6
-        with:
-          name: packages-linux-arm64
-          path: legacy/linux-arm64
       - name: Mirror migration release to website feed
         shell: bash
         run: |
           mkdir -p site/website/updates
-          cp legacy/windows/latest.yml site/website/updates/latest.yml
-          cp legacy/linux-arm64/latest-linux*.yml site/website/updates/
           release_url="https://github.com/ikie-cli/native-releases/releases/download/${{ github.ref_name }}"
+          curl --fail --location --retry 3 "$release_url/latest.yml" --output site/website/updates/latest.yml
+          curl --fail --location --retry 3 "$release_url/latest-linux-arm64.yml" --output site/website/updates/latest-linux-arm64.yml
           sed -i -E "s#^([[:space:]]*-?[[:space:]]*url:[[:space:]]*)([^h].*)#\\1${release_url}/\\2#" site/website/updates/latest.yml
           sed -i -E "s#^([[:space:]]*-?[[:space:]]*url:[[:space:]]*)([^h].*)#\\1${release_url}/\\2#" site/website/updates/latest-linux*.yml
       - name: Commit website feed
@@ -295,3 +312,13 @@ jobs:
           fi
           git commit -m "Release: mirror ${{ github.ref_name }} to legacy update feed"
           git push origin HEAD:main
+      - name: Deploy updated website and legacy feeds
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.CLOUDFLARE_PAGES_PROJECT_NAME != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site/website --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }} --branch=main --commit-dirty=true
+      - name: Confirm Git-connected website deployment
+        if: env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == '' || env.CLOUDFLARE_PAGES_PROJECT_NAME == ''
+        run: echo "Cloudflare credentials are not stored in GitHub; the repository push is left for the existing Pages Git integration to deploy."

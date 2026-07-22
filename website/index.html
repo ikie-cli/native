@@ -568,7 +568,7 @@
   <section id="download" class="section">
     <div class="wrap">
       <span class="kicker reveal">Get Native</span>
-      <h2 class="reveal">Download Native <span data-release-version>3.2.0</span></h2>
+      <h2 class="reveal">Download Native <span data-release-version>3.3.2</span></h2>
       <p class="sub reveal">Free for personal use. Install once — automatic updates keep you current.</p>
 
       <div class="dlpanel reveal">
@@ -578,25 +578,26 @@
           <h3>Windows</h3>
           <p class="req">Windows 10 / 11 · 64-bit · auto-updates</p>
           <a class="btn btn-green" data-release-asset="windows-x64" href="https://github.com/ikie-cli/native-releases/releases/latest"><i data-lucide="download"></i>Setup · x64</a>
-          <p class="alt"><a href="https://github.com/ikie-cli/native-releases/releases/latest">all Windows builds</a></p>
+          <p class="alt"><a data-release-asset="windows-arm64" href="https://github.com/ikie-cli/native-releases/releases/latest">ARM64 installer</a></p>
         </div>
         <div class="dlcol">
           <div class="os"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2c-2 0-3.5 1.6-3.5 3.6 0 1.2.1 2-.4 3.2-.8 1.8-2.8 3.5-3.6 5.9-.6 1.9-.2 4 1.2 5.4.9.9 3 .9 4.1.4a5.4 5.4 0 0 1 4.4 0c1.1.5 3.2.5 4.1-.4 1.4-1.4 1.8-3.5 1.2-5.4-.8-2.4-2.8-4.1-3.6-5.9-.5-1.2-.4-2-.4-3.2C15.5 3.6 14 2 12 2Z"/><path d="M9.5 8.5h.01M14.5 8.5h.01"/></svg></div>
           <h3>Linux</h3>
           <p class="req">AppImage · auto-updates · any distro</p>
-          <a class="btn btn-dark" data-release-asset="linux-arm64" href="https://github.com/ikie-cli/native-releases/releases/latest"><i data-lucide="download"></i>AppImage · ARM64</a>
-          <p class="alt">.deb available on request</p>
+          <a class="btn btn-dark" data-release-asset="linux-x64" href="https://github.com/ikie-cli/native-releases/releases/latest"><i data-lucide="download"></i>AppImage · x64</a>
+          <p class="alt"><a data-release-asset="linux-arm64" href="https://github.com/ikie-cli/native-releases/releases/latest">ARM64 AppImage</a> · .deb also available</p>
         </div>
-        <div class="dlcol soon">
+        <div class="dlcol">
           <div class="os"><svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.7 12.9c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-2-.9-3.2-.9C6.7 7.3 5.1 8.3 4.2 9.8c-1.8 3.1-.5 7.8 1.3 10.3.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.5 0 2 .8 3.3.8 1.4 0 2.2-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9-.1 0-2.8-1.1-2.8-4.4ZM14.3 5.1c.7-.8 1.1-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4Z"/></svg></div>
           <h3>macOS</h3>
-          <p class="req">In development</p>
-          <a class="btn" href="#"><i data-lucide="clock"></i>Coming soon</a>
+          <p class="req">macOS 13+ · Apple Silicon or Intel</p>
+          <a class="btn btn-dark" data-release-asset="mac-arm64" href="https://github.com/ikie-cli/native-releases/releases/latest"><i data-lucide="download"></i>DMG · Apple Silicon</a>
+          <p class="alt"><a data-release-asset="mac-x64" href="https://github.com/ikie-cli/native-releases/releases/latest">Intel DMG</a></p>
         </div>
       </div>
 
       <p class="fineprint reveal">
-        Builds are not yet code-signed: Windows SmartScreen may ask once — choose “More info → Run anyway”.
+        Windows SmartScreen or macOS Gatekeeper may ask once on unsigned builds.
         You must own Minecraft: Java Edition to play online.
       </p>
     </div>
@@ -663,7 +664,11 @@
       const assets = release.assets || []
       const pick = {
         'windows-x64': (name) => /^Native-Setup-.*-x64\.exe$/.test(name),
-        'linux-arm64': (name) => /^Native-.*-arm64\.AppImage$/.test(name)
+        'windows-arm64': (name) => /^Native-Setup-.*-arm64\.exe$/.test(name),
+        'linux-x64': (name) => /^Native-.*-x86_64\.AppImage$/.test(name),
+        'linux-arm64': (name) => /^Native-.*-arm64\.AppImage$/.test(name),
+        'mac-x64': (name) => /^Native-.*-x64\.dmg$/.test(name),
+        'mac-arm64': (name) => /^Native-.*-arm64\.dmg$/.test(name)
       }
       document.querySelectorAll('[data-release-version]').forEach((el) => {
         el.textContent = String(release.tag_name || '').replace(/^v/, '')

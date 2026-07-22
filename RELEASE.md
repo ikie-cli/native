@@ -1,4 +1,4 @@
-# Release checklist — Native 3.2.0
+# Release checklist — Native 3.3.2
 
 Verified on 2026-07-21. Gate order (identical to CI): typecheck → vitest (Node-ABI) →
 build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
@@ -46,10 +46,13 @@ build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
 
 ## Ship steps
 
-1. Add Windows/macOS signing secrets before a production release (unsigned builds remain
-   available when secrets are absent).
-2. `git tag v3.2.0 && git push origin v3.2.0` — CI packages Windows, Linux, and macOS
-   for x64/ARM64 and attaches their `latest*.yml` feeds to the GitHub Release.
-3. CI anonymously verifies every public release asset before updating the legacy website feed.
-4. Microsoft sign-in works out of the box via msmc (official launcher OAuth client);
+1. Configure Windows signing and macOS signing/notarization secrets when certificates are
+   available; unsigned packages remain publishable in the meantime.
+2. Cloudflare Pages deploys pushes through its Git integration. Optional API/account/project
+   secrets enable the explicit Wrangler deployment path.
+3. `git tag v3.3.2 && git push origin v3.3.2` — CI packages Windows, Linux, and macOS
+   for x64/ARM64, merges architecture-correct update feeds, and publishes the release.
+4. CI validates every feed entry against public release assets, mirrors stable migration
+   feeds, and deploys the website.
+5. Microsoft sign-in works out of the box via msmc (official launcher OAuth client);
    `NATIVE_MSA_CLIENT_ID` remains available for orgs preferring their own registration.

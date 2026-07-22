@@ -232,12 +232,18 @@ function HitCard({
   )
 }
 
-export function DiscoverScreen({ instanceId }: { instanceId?: string }): React.JSX.Element {
+export function DiscoverScreen({
+  instanceId,
+  contentType = 'mod'
+}: {
+  instanceId?: string
+  contentType?: ProjectType
+}): React.JSX.Element {
   const instances = useInstances((s) => s.instances)
   const [selectedId, setSelectedId] = useState<string | null>(instanceId ?? instances[0]?.id ?? null)
   const instance = instances.find((i) => i.id === selectedId) ?? null
 
-  const [type, setType] = useState<ProjectType>('mod')
+  const [type, setType] = useState<ProjectType>(contentType)
   const [platform, setPlatform] = useState<'modrinth' | 'curseforge'>('modrinth')
   const [sort, setSort] = useState<'relevance' | 'downloads' | 'follows' | 'newest'>('relevance')
   const [query, setQuery] = useState('')

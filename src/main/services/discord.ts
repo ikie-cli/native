@@ -15,8 +15,10 @@ import { log } from '../logger'
  * large image; text presence works without it. Safe to ship publicly — the id
  * only identifies the app and grants nothing.
  */
-const CLIENT_ID = '1266421752083189830'
+const CLIENT_ID = '1528357514326966303'
 const LARGE_IMAGE = 'logo'
+const RETRY_BASE_MS = 15_000
+const RETRY_MAX_MS = 5 * 60_000
 
 /** What to show; null means "idle" (no game running). */
 type Presence = { instance: InstanceConfig; startedAt: number } | null
@@ -26,6 +28,8 @@ export class DiscordRpc {
   private ready = false
   private enabled = false
   private current: Presence = null
+  private retryTimer: ReturnType<typeof setTimeout> | null = null
+  private retryAttempt = 0
 
   /** Enable/disable at runtime (settings toggle). */
   setEnabled(on: boolean): void {
@@ -38,11 +42,15 @@ export class DiscordRpc {
   /** Called on game start/stop; `null` clears back to idle. */
   set(presence: Presence): void {
     this.current = presence
-    if (this.enabled) void this.apply()
+    if (this.enabled) {
+      this.clearRetry()
+      void this.apply()
+    }
   }
 
   /** Tear down on quit. */
   shutdown(): void {
+    this.enabled = false
     this.disconnect()
   }
 
@@ -51,23 +59,30 @@ export class DiscordRpc {
     if (!this.client) {
       const client = new Client({ clientId: CLIENT_ID })
       client.on('ready', () => (this.ready = true))
-      client.on('disconnected', () => (this.ready = false))
+      client.on('disconnected', () => {
+        this.ready = false
+        this.scheduleReconnect()
+      })
       this.client = client
     }
     try {
       await this.client.login()
       this.ready = true
+      this.retryAttempt = 0
+      this.clearRetry()
       return true
     } catch (err) {
       // Discord closed or not installed — stay quiet; drop the client so the
       // next apply() retries on a fresh socket instead of a half-dead one.
       log.debug(`discord rpc: not connected (${(err as Error).message})`)
-      this.disconnect()
+      this.disconnect(false)
+      this.scheduleReconnect()
       return false
     }
   }
 
-  private disconnect(): void {
+  private disconnect(cancelRetry = true): void {
+    if (cancelRetry) this.clearRetry()
     this.ready = false
     if (this.client) {
       void this.client.destroy().catch(() => {})
@@ -98,7 +113,24 @@ export class DiscordRpc {
       }
     } catch (err) {
       log.debug(`discord rpc: setActivity failed (${(err as Error).message})`)
-      this.ready = false
+      this.disconnect(false)
+      this.scheduleReconnect()
     }
+  }
+
+  private scheduleReconnect(): void {
+    if (!this.enabled || this.retryTimer) return
+    const delay = Math.min(RETRY_BASE_MS * 2 ** this.retryAttempt, RETRY_MAX_MS)
+    this.retryAttempt++
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null
+      if (this.enabled) void this.apply()
+    }, delay)
+    this.retryTimer.unref?.()
+  }
+
+  private clearRetry(): void {
+    if (this.retryTimer) clearTimeout(this.retryTimer)
+    this.retryTimer = null
   }
 }

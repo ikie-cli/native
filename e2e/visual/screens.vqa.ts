@@ -110,6 +110,9 @@ test('capture populated screens', async () => {
   await expect(page.getByText('The Garden Awakens — new update out now')).toBeVisible({
     timeout: 15_000
   })
+  await expect(page.getByTestId('best-modpacks')).toContainText('Fabulously Optimized', {
+    timeout: 15_000
+  })
   await shoot(page, 'home')
 
   // Library

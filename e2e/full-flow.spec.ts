@@ -186,4 +186,9 @@ test('settings modal opens; theme switch flips tokens', async () => {
 
   const before = await page.evaluate(() => document.documentElement.dataset.theme)
   expect(before).toBe('mono')
+
+  await page.getByRole('button', { name: 'Updates' }).click()
+  await expect(page.getByRole('radio', { name: /Stable/ })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('radio', { name: /Beta/ }).click()
+  await expect(page.getByRole('radio', { name: /Beta/ })).toHaveAttribute('aria-checked', 'true')
 })

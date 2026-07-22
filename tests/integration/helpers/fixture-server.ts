@@ -36,7 +36,7 @@ export async function startFixtureServer(): Promise<Fixture> {
     const path = (req.url ?? '/').split('?')[0]
     const range = req.headers.range ?? null
     requests.push({ path, range })
-    const file = files.get(path)
+    const file = files.get(req.url ?? path) ?? files.get(path)
     if (!file) {
       res.statusCode = 404
       res.end('not found')

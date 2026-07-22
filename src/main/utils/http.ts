@@ -1,4 +1,4 @@
-const UA = 'NativeLauncher/0.1.0 (native-launcher)'
+import { USER_AGENT } from '../version'
 
 export interface FetchOpts {
   timeoutMs?: number
@@ -19,7 +19,7 @@ export async function httpRaw(url: string, opts: FetchOpts = {}): Promise<Respon
     try {
       const res = await fetch(url, {
         method: opts.method ?? 'GET',
-        headers: { 'user-agent': UA, ...opts.headers },
+        headers: { 'user-agent': USER_AGENT, ...opts.headers },
         body: opts.body,
         signal: ac.signal
       })

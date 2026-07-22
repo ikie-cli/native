@@ -19,11 +19,11 @@ import { DownloadManager } from './download'
 import { paths } from '../paths'
 import { ensureDir, exists } from '../utils/fsx'
 import { log } from '../logger'
+import { APP_VERSION } from '../version'
 import os from 'node:os'
 
 const LOG_BUFFER_MAX = 5000
 const SESSION_KEEP = 20
-const APP_VERSION = process.env.npm_package_version ?? '0.1.0'
 
 export interface LaunchDeps {
   resolveVersionId: (inst: InstanceConfig) => Promise<string>

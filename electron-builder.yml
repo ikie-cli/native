@@ -37,12 +37,13 @@ nsis:
   differentialPackage: true
 
 linux:
+  syncDesktopName: true
   target:
     - target: AppImage
     - target: deb
   icon: build/icon.png
   category: Game
-  maintainer: Native Contributors <hello@native.example>
+  maintainer: Native Labs <support@nativelauncher.app>
   synopsis: A fast, beautiful Minecraft launcher
   description: >-
     Native is a fast, beautiful Minecraft launcher with instances, mod loaders
@@ -69,6 +70,7 @@ mac:
   gatekeeperAssess: false
   target:
     - target: dmg
+    - target: zip
   artifactName: ${productName}-${version}-${arch}.${ext}
 
 # Stable releases are mirrored to the legacy website feed by CI so older installs can

@@ -1,11 +1,12 @@
 import { create } from 'zustand'
+import type { ProjectType } from '@shared/types'
 
 export type InstanceTab = 'content' | 'worlds' | 'screenshots' | 'files' | 'logs' | 'options'
 
 export type Route =
   | { name: 'home' }
   | { name: 'library' }
-  | { name: 'discover'; instanceId?: string }
+  | { name: 'discover'; instanceId?: string; contentType?: ProjectType }
   | { name: 'instance'; id: string; tab: InstanceTab }
   | { name: 'servers' }
 

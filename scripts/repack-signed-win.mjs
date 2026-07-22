@@ -7,7 +7,8 @@
 // latest.yml's sha512/size from the signed exe, using electron-builder's own
 // buildBlockMap so the output is byte-identical to a native signed build.
 //
-// Usage: node scripts/repack-signed-win.mjs <dist-dir>   (default: dist)
+// Usage: node scripts/repack-signed-win.mjs <dist-dir> <channel>
+//   defaults: dist, latest
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -17,7 +18,8 @@ const require = createRequire(import.meta.url)
 const { buildBlockMap } = require('app-builder-lib/out/targets/blockmap/blockmap.js')
 
 const distDir = process.argv[2] ?? 'dist'
-const ymlPath = join(distDir, 'latest.yml')
+const channel = process.argv[3] ?? 'latest'
+const ymlPath = join(distDir, `${channel}.yml`)
 
 if (!existsSync(ymlPath)) {
   console.error(`[repack] ${ymlPath} not found — nothing to repack`)
