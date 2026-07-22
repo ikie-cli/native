@@ -1,8 +1,11 @@
-version: 3.3.1
+version: 3.3.2
 files:
-  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.3.1/Native-Setup-3.3.1-x64.exe
-    sha512: Z49jUvv2Kkg0C6lM8a0cdHnTvzsL0ap2OcWLJjvR8Px/UHknFP9507v08eG5CAtL3Cp/9HPi3fbr7iGhoFpVTQ==
-    size: 100731051
-path: Native-Setup-3.3.1-x64.exe
-sha512: Z49jUvv2Kkg0C6lM8a0cdHnTvzsL0ap2OcWLJjvR8Px/UHknFP9507v08eG5CAtL3Cp/9HPi3fbr7iGhoFpVTQ==
-releaseDate: '2026-07-21T16:32:56.596Z'
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.3.2/Native-Setup-3.3.2-x64.exe
+    sha512: alJm64VvQ1OOUdQWGS9ckZJKb/jjI2FtGMfwAxuTZDklBPTgvoiKoh0PxM2psEvYshh1LzBF7W30u1RiWahgCA==
+    size: 101279881
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.3.2/Native-Setup-3.3.2-arm64.exe
+    sha512: Shc/Rgv2nTV9jEV9cl4JZ+Coyn1MWhKmgBKruTlzwEUoxby6uAAD0xzdrIH0cg8h3OTs8WykVU77dqphZgYc6Q==
+    size: 96941371
+path: Native-Setup-3.3.2-x64.exe
+sha512: alJm64VvQ1OOUdQWGS9ckZJKb/jjI2FtGMfwAxuTZDklBPTgvoiKoh0PxM2psEvYshh1LzBF7W30u1RiWahgCA==
+releaseDate: '2026-07-22T03:51:57.684Z'
