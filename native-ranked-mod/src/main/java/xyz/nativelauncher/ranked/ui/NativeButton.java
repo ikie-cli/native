@@ -32,15 +32,15 @@ public final class NativeButton {
         boolean over = enabled && contains(mouseX, mouseY);
         float target = over ? 1F : 0F;
         hover += (target - hover) * Math.min(1F, delta * 0.28F + 0.18F);
-        int fill = primary ? mix(NativeTheme.ACCENT_DARK, NativeTheme.ACCENT, hover) : mix(NativeTheme.SURFACE, NativeTheme.SURFACE_HOVER, hover);
-        int border = primary ? mix(NativeTheme.ACCENT, NativeTheme.ACCENT_BRIGHT, hover) : mix(NativeTheme.BORDER, 0xFF3A3847, hover);
+        int fill = primary ? mix(0xFFF4F4F4, 0xFFFFFFFF, hover) : mix(0xB817171B, 0xE52A2A30, hover);
+        int border = primary ? 0xFFFFFFFF : mix(0x997A7A82, 0xFFD1D1D5, hover);
         if (!enabled) {
-            fill = 0xFF17171D;
-            border = 0xFF25242C;
+            fill = 0x99131316;
+            border = 0x553A3A40;
         }
-        NativeDraw.borderedRect(matrices, x, y, width, height, 6, border, fill);
+        NativeDraw.borderedRect(matrices, x, y, width, height, 3, border, fill);
         int color = enabled ? (primary ? 0xFF000000 : NativeTheme.TEXT) : NativeTheme.DIM;
-        NativeDraw.centered(matrices, renderer, label, x + width / 2F, y + (height - 8) / 2F, color);
+        NativeDraw.centeredBold(matrices, renderer, label, x + width / 2F, y + (height - 9) / 2F, color);
     }
 
     public boolean click(double mouseX, double mouseY) {

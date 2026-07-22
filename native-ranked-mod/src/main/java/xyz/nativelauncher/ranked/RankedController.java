@@ -41,7 +41,6 @@ public final class RankedController {
     private volatile boolean busy;
     private long nextPoll;
     private boolean redirected;
-    private boolean allowVanilla;
     private boolean worldRequested;
     private boolean readySent;
     private boolean raceStarted;
@@ -59,7 +58,7 @@ public final class RankedController {
 
     public void tick(MinecraftClient client) {
         if (config == null) bootstrap(client);
-        if (client.world == null && client.currentScreen instanceof TitleScreen && !allowVanilla && !redirected) {
+        if (client.world == null && client.currentScreen instanceof TitleScreen && !redirected) {
             redirected = true;
             client.openScreen(new NativeRankedScreen());
         }
@@ -143,11 +142,6 @@ public final class RankedController {
             leaderboard = array(board, "players");
             online = true;
         }, false);
-    }
-
-    public void allowVanillaTitle(MinecraftClient client) {
-        allowVanilla = true;
-        client.openScreen(new TitleScreen());
     }
 
     public void returnHome(MinecraftClient client) {
