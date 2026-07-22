@@ -151,10 +151,11 @@ test('servers screen: add, ping states, remove', async () => {
   const { page } = app
 
   await page.getByLabel('Servers').click()
-  await expect(page.getByTestId('screen-servers')).toBeVisible()
+  const screen = page.getByTestId('screen-servers')
+  await expect(screen).toBeVisible()
   // Two seeded servers render (both offline in the sandbox — that's fine).
-  await expect(page.getByText('Hypixel', { exact: true })).toBeVisible()
-  await expect(page.getByText('Local Test', { exact: true })).toBeVisible()
+  await expect(screen.getByText('Hypixel', { exact: true })).toBeVisible()
+  await expect(screen.getByText('Local Test', { exact: true })).toBeVisible()
 
   // Add another.
   await page.getByTestId('servers-add').click()
