@@ -17,6 +17,9 @@ Native-*-windows-*.zip
 Native-Setup-*.exe
 website/downloads/
 website/updates/
+native-ranked-mod/.gradle/
+native-ranked-mod/build/
+native-ranked-mod/run/
 
 # Local Claude Code settings
 .claude/

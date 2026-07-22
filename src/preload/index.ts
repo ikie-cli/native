@@ -21,6 +21,7 @@ import type {
   NewsItem,
   ProjectDetails,
   ProjectVersion,
+  RankedStatus,
   RunningGame,
   ScreenshotInfo,
   SearchResult,
@@ -212,6 +213,11 @@ const api = {
     ping: (address: string): Promise<ServerStatus> => ipcRenderer.invoke(IPC.servers.ping, address),
     quickJoin: (id: string): Promise<RunningGame> => ipcRenderer.invoke(IPC.servers.quickJoin, id),
     onChanged: (cb: (servers: ServerEntry[]) => void) => on(IPC.servers.onChanged, cb)
+  },
+  ranked: {
+    status: (): Promise<RankedStatus> => ipcRenderer.invoke(IPC.ranked.status),
+    provision: (): Promise<RankedStatus> => ipcRenderer.invoke(IPC.ranked.provision),
+    launch: (): Promise<RunningGame> => ipcRenderer.invoke(IPC.ranked.launch)
   },
   news: {
     fetch: (): Promise<NewsItem[]> => ipcRenderer.invoke(IPC.news.fetch)

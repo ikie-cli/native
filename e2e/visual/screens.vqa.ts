@@ -162,6 +162,12 @@ test('capture populated screens', async () => {
   await page.waitForTimeout(1200) // pings resolve (offline states)
   await shoot(page, 'servers')
 
+  // Native Ranked
+  await page.getByLabel('Native Ranked').click()
+  await expect(page.getByTestId('ranked-screen')).toBeVisible()
+  await expect(page.getByText('Same seed. Same second.')).toBeVisible()
+  await shoot(page, 'ranked')
+
   // Modals are captured over the dense Home screen (references dim
   // content-rich screens behind every dialog).
   await page.getByLabel('Home').first().click()

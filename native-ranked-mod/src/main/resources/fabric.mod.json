@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "native_ranked",
+  "version": "${version}",
+  "name": "Native Ranked",
+  "description": "Fair, synchronized Minecraft speedrun races for Native Launcher.",
+  "authors": ["Native Labs"],
+  "contact": {
+    "homepage": "https://nativelauncher.xyz",
+    "sources": "https://github.com/ikie-cli/native"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["xyz.nativelauncher.ranked.NativeRankedClient"]
+  },
+  "mixins": ["native-ranked.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.14.0",
+    "minecraft": "1.16.1",
+    "java": ">=8"
+  }
+}

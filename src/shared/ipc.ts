@@ -103,6 +103,11 @@ export const IPC = {
     quickJoin: 'servers:quick-join',
     onChanged: 'servers:changed'
   },
+  ranked: {
+    status: 'ranked:status',
+    provision: 'ranked:provision',
+    launch: 'ranked:launch'
+  },
   news: {
     fetch: 'news:fetch'
   },

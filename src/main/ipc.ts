@@ -25,6 +25,7 @@ import { IconsService } from './services/icons'
 import { fetchNews } from './services/news'
 import { UpdaterService } from './services/updater'
 import { DiscordRpc } from './services/discord'
+import { RankedService } from './services/ranked'
 import { LaunchManager } from './core/launch'
 import { DownloadManager } from './core/download'
 import { getManifest } from './core/manifest'
@@ -43,6 +44,7 @@ export interface Services {
   launcher: LaunchManager
   updater: UpdaterService
   discord: DiscordRpc
+  ranked: RankedService
   /** Swapped for a renderer-backed dialog in registerIpc; auto-approves headless. */
   javaConfirm: { handler: (req: Omit<JavaDownloadRequest, 'requestId'>) => Promise<boolean> }
 }
@@ -81,12 +83,13 @@ export function buildServices(): Services {
   })
   const updater = new UpdaterService()
   const discord = new DiscordRpc()
-  return { settings, accounts, instances, launcher, updater, discord, javaConfirm }
+  const ranked = new RankedService(instances, accounts)
+  return { settings, accounts, instances, launcher, updater, discord, ranked, javaConfirm }
 }
 
 export function registerIpc(win: BrowserWindow, services: Services): void {
   const db = openDb()
-  const { settings, accounts, instances, launcher, updater, discord } = services
+  const { settings, accounts, instances, launcher, updater, discord, ranked } = services
   const content = new ContentService(db, () => CURSEFORGE_API_KEY)
   const servers = new ServersService(db)
   const icons = new IconsService()
@@ -395,6 +398,21 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
     } catch (err) {
       log.warn(`Could not finish multiplayer session: ${(err as Error).message}`)
     }
+  })
+
+  // ---------- Native Ranked ----------
+  ipcMain.handle(IPC.ranked.status, () => ranked.status())
+  ipcMain.handle(IPC.ranked.provision, () => ranked.provision())
+  ipcMain.handle(IPC.ranked.launch, async () => {
+    const inst = await ranked.prepareLaunch()
+    const game = await launcher.launch(inst, {
+      javaOverride: settings.get().javaPathOverride,
+      server: null
+    })
+    const behavior = settings.get().launchBehavior
+    if (behavior === 'minimize') win.minimize()
+    else if (behavior === 'close') win.hide()
+    return game
   })
 
   // ---------- news ----------

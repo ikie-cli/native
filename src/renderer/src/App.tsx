@@ -19,6 +19,7 @@ const LibraryScreen = lazy(() => import('@/screens/Library').then((m) => ({ defa
 const DiscoverScreen = lazy(() => import('@/screens/Discover').then((m) => ({ default: m.DiscoverScreen })))
 const InstanceScreen = lazy(() => import('@/screens/Instance').then((m) => ({ default: m.InstanceScreen })))
 const ServersScreen = lazy(() => import('@/screens/Servers').then((m) => ({ default: m.ServersScreen })))
+const RankedScreen = lazy(() => import('@/screens/Ranked').then((m) => ({ default: m.RankedScreen })))
 const SettingsModal = lazy(() => import('@/screens/SettingsModal').then((m) => ({ default: m.SettingsModal })))
 const CreateInstanceModal = lazy(() =>
   import('@/screens/CreateInstanceModal').then((m) => ({ default: m.CreateInstanceModal }))
@@ -74,6 +75,7 @@ export default function App(): React.JSX.Element {
                 )}
                 {route.name === 'instance' && <InstanceScreen id={route.id} tab={route.tab} />}
                 {route.name === 'servers' && <ServersScreen />}
+                {route.name === 'ranked' && <RankedScreen />}
               </Suspense>
             </motion.div>
           </AnimatePresence>

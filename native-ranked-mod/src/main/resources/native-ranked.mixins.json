@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "xyz.nativelauncher.ranked.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "client": [
+    "CreateWorldScreenAccessor",
+    "EnderDragonFightMixin",
+    "InGameHudMixin",
+    "MinecraftClientMixin",
+    "MoreOptionsDialogAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
