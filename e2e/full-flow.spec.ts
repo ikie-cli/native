@@ -113,8 +113,8 @@ test('seeded library renders and playtime/kebab actions work', async () => {
   app = await launchApp({ env: fx.env, seed: defaultSeed() })
   const { page } = app
 
-  // Home shows seeded instances in Jump back in (capped at 5 recents).
-  await expect(page.getByTestId('jump-back-row')).toHaveCount(5)
+  // Home keeps three recents above the fold so Best modpacks is immediately visible.
+  await expect(page.getByTestId('jump-back-row')).toHaveCount(3)
   await expect(page.getByText('Fabulously Optimized')).toBeVisible()
 
   // Library shows cards; search filters.
