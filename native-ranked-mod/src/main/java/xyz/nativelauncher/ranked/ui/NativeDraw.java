@@ -8,10 +8,18 @@ import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.text.LiteralText;
+import net.minecraft.text.StringRenderable;
+import net.minecraft.text.Style;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
 public final class NativeDraw {
+    private static final Identifier UI_FONT = new Identifier("native_ranked", "ui");
+    private static final Identifier UI_BOLD_FONT = new Identifier("native_ranked", "ui_bold");
+    private static final Identifier UI_DISPLAY_FONT = new Identifier("native_ranked", "ui_display");
+
     private NativeDraw() {}
 
     public static void roundedRect(MatrixStack matrices, float x, float y, float width, float height, float radius, int color) {
@@ -39,6 +47,18 @@ public final class NativeDraw {
         vertex(buffer, matrix, x + width, y, top);
         vertex(buffer, matrix, x + width, y + height, bottom);
         vertex(buffer, matrix, x, y + height, bottom);
+        draw(buffer);
+    }
+
+    public static void horizontalGradient(MatrixStack matrices, int x, int y, int width, int height, int left, int right) {
+        Matrix4f matrix = matrices.peek().getModel();
+        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+        begin();
+        buffer.begin(GL11.GL_QUADS, VertexFormats.POSITION_COLOR);
+        vertex(buffer, matrix, x, y, left);
+        vertex(buffer, matrix, x + width, y, right);
+        vertex(buffer, matrix, x + width, y + height, right);
+        vertex(buffer, matrix, x, y + height, left);
         draw(buffer);
     }
 
@@ -77,16 +97,67 @@ public final class NativeDraw {
     }
 
     public static void text(MatrixStack matrices, TextRenderer renderer, String value, float x, float y, int color) {
-        renderer.draw(matrices, value, x, y, color);
+        renderer.draw(matrices, styled(value, false), x, y, color);
+    }
+
+    public static void textBold(MatrixStack matrices, TextRenderer renderer, String value, float x, float y, int color) {
+        renderer.draw(matrices, styled(value, true), x, y, color);
     }
 
     public static void centered(MatrixStack matrices, TextRenderer renderer, String value, float x, float y, int color) {
-        renderer.draw(matrices, value, x - renderer.getWidth(value) / 2F, y, color);
+        StringRenderable text = styled(value, false);
+        renderer.draw(matrices, text, x - renderer.getWidth(text) / 2F, y, color);
+    }
+
+    public static void centeredBold(MatrixStack matrices, TextRenderer renderer, String value, float x, float y, int color) {
+        StringRenderable text = styled(value, true);
+        renderer.draw(matrices, text, x - renderer.getWidth(text) / 2F, y, color);
+    }
+
+    public static void scaledText(MatrixStack matrices, TextRenderer renderer, String value, float x, float y, float scale, int color, boolean bold) {
+        matrices.push();
+        matrices.translate(x, y, 0);
+        matrices.scale(scale, scale, 1F);
+        renderer.draw(matrices, styled(value, bold), 0, 0, color);
+        matrices.pop();
+    }
+
+    public static void displayText(MatrixStack matrices, TextRenderer renderer, String value, float x, float y, int color) {
+        renderer.draw(matrices, styled(value, UI_DISPLAY_FONT), x, y, color);
+    }
+
+    public static void monogram(MatrixStack matrices, float centerX, float centerY, float size, int color) {
+        float half = size / 2F;
+        float thickness = Math.max(1.4F, size * 0.17F);
+        line(matrices, centerX - half, centerY - half, centerX - half, centerY + half, thickness, color);
+        line(matrices, centerX - half, centerY - half, centerX + half, centerY + half, thickness, color);
+        line(matrices, centerX + half, centerY - half, centerX + half, centerY + half, thickness, color);
+    }
+
+    public static int width(TextRenderer renderer, String value) {
+        return renderer.getWidth(styled(value, false));
+    }
+
+    public static int widthBold(TextRenderer renderer, String value) {
+        return renderer.getWidth(styled(value, true));
     }
 
     public static String ellipsis(TextRenderer renderer, String value, int maxWidth) {
-        if (renderer.getWidth(value) <= maxWidth) return value;
-        return renderer.trimToWidth(value, Math.max(0, maxWidth - renderer.getWidth("..."))) + "...";
+        if (width(renderer, value) <= maxWidth) return value;
+        String suffix = "...";
+        int end = value.length();
+        while (end > 0 && width(renderer, value.substring(0, end) + suffix) > maxWidth) end--;
+        return value.substring(0, end) + suffix;
+    }
+
+    private static StringRenderable styled(String value, boolean bold) {
+        return styled(value, bold ? UI_BOLD_FONT : UI_FONT);
+    }
+
+    private static StringRenderable styled(String value, Identifier font) {
+        LiteralText text = new LiteralText(value == null ? "" : value);
+        text.setStyle(Style.EMPTY.withFont(font));
+        return text;
     }
 
     private static void rect(MatrixStack matrices, float x, float y, float width, float height, int color) {

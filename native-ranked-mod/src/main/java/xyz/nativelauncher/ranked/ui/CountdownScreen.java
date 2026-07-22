@@ -25,7 +25,7 @@ public final class CountdownScreen extends Screen {
         int y = (height - cardHeight) / 2;
         NativeDraw.borderedRect(matrices, x, y, cardWidth, cardHeight, 12, NativeTheme.BORDER, NativeTheme.SURFACE);
         NativeDraw.roundedRect(matrices, x + 18, y + 17, 28, 28, 8, NativeTheme.ACCENT);
-        NativeDraw.centered(matrices, textRenderer, "N", x + 32, y + 27, 0xFF000000);
+        NativeDraw.monogram(matrices, x + 32, y + 31, 9, 0xFF000000);
         NativeDraw.text(matrices, textRenderer, "MATCH FOUND", x + 58, y + 20, NativeTheme.TEXT);
         NativeDraw.text(matrices, textRenderer, "Worlds are synchronized by Native", x + 58, y + 35, NativeTheme.MUTED);
         NativeDraw.line(matrices, x + 18, y + 61, x + cardWidth - 18, y + 61, 1, NativeTheme.BORDER);

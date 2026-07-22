@@ -14,7 +14,7 @@ public final class RaceHud {
         int y = 12;
         NativeDraw.borderedRect(matrices, x, y, width, 83, 8, 0xCC33303E, 0xD913121A);
         NativeDraw.roundedRect(matrices, x + 10, y + 10, 19, 19, 6, NativeTheme.ACCENT);
-        NativeDraw.centered(matrices, client.textRenderer, "N", x + 19.5F, y + 16, 0xFF000000);
+        NativeDraw.monogram(matrices, x + 19.5F, y + 19.5F, 7, 0xFF000000);
         NativeDraw.text(matrices, client.textRenderer, "NATIVE RANKED", x + 37, y + 11, NativeTheme.TEXT);
         String timer;
         long startsAt = controller.startsAt();
@@ -25,7 +25,7 @@ public final class RaceHud {
         NativeDraw.text(matrices, client.textRenderer, NativeDraw.ellipsis(client.textRenderer, controller.opponentName(), 98), x + 10, y + 53, NativeTheme.TEXT);
         NativeDraw.text(matrices, client.textRenderer, pretty(controller.opponentProgress()), x + 10, y + 67, NativeTheme.MUTED);
         String self = pretty(controller.ownProgress());
-        NativeDraw.text(matrices, client.textRenderer, self, x + width - 10 - client.textRenderer.getWidth(self), y + 53, NativeTheme.ACCENT_BRIGHT);
+        NativeDraw.text(matrices, client.textRenderer, self, x + width - 10 - NativeDraw.width(client.textRenderer, self), y + 53, NativeTheme.ACCENT_BRIGHT);
         NativeDraw.roundedRect(matrices, x + width - 16, y + 68, 6, 6, 3, NativeTheme.GREEN);
     }
 

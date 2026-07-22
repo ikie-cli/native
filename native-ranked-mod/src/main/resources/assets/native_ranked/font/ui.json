@@ -1,0 +1,11 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "native_ranked:inter-regular.ttf",
+      "size": 11,
+      "oversample": 3,
+      "shift": [0, 0]
+    }
+  ]
+}
