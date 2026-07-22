@@ -1,4 +1,4 @@
-# Release checklist — Native 3.3.3
+# Release checklist — Native 3.3.4
 
 Verified on 2026-07-22. Gate order (identical to CI): typecheck → vitest (Node-ABI) →
 build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
@@ -50,7 +50,7 @@ build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
    available; unsigned packages remain publishable in the meantime.
 2. Cloudflare Pages deploys pushes through its Git integration. Optional API/account/project
    secrets enable the explicit Wrangler deployment path.
-3. `git tag v3.3.3 && git push origin v3.3.3` — CI packages Windows, Linux, and macOS
+3. `git tag v3.3.4 && git push origin v3.3.4` — CI packages Windows, Linux, and macOS
    for x64/ARM64, merges architecture-correct update feeds, and publishes the release.
 4. CI validates every feed entry against public release assets, mirrors stable migration
    feeds, and deploys the website.

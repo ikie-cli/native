@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Clock, History, Play, Plus, RefreshCw, Server, Signal, Sparkles, Trash2, Users } from 'lucide-react'
+import { Play, Plus, RefreshCw, Server, Sparkles, Trash2, Users } from 'lucide-react'
 import type { ServerEntry, ServerStatus } from '@shared/types'
 import { useInstances, useServers, useToasts, toastError } from '@/stores/data'
 import { Button, EmptyState, IconButton, Input, Spinner } from '@/components/ui/ui'
@@ -45,80 +45,98 @@ function ServerCard({
   }, [ping])
 
   return (
-    <motion.div
+    <motion.article
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
-      className="group flex items-center gap-4 rounded-card bg-surface-raised p-4 transition-colors duration-fast hover:bg-surface-hover"
+      className="group flex min-h-[238px] flex-col rounded-card border border-line-subtle bg-surface-raised p-4 transition-all duration-fast hover:border-line-strong hover:bg-surface-hover"
     >
-      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md2 bg-surface-inset">
-        {status?.favicon ? (
-          <img src={status.favicon} alt="" className="h-full w-full object-cover" style={{ imageRendering: 'pixelated' }} />
-        ) : (
-          <Server size={24} className="text-content-muted" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-body font-bold text-content-primary">{entry.name}</span>
-          <span
-            className={cn('h-2 w-2 shrink-0 rounded-full', status?.online ? 'bg-accent' : 'bg-content-muted')}
-            title={status?.online ? 'Online' : 'Offline'}
-          />
-          {entry.detected && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-inset px-2 py-0.5 text-tiny font-semibold text-content-muted">
-              <Sparkles size={10} /> Auto-detected
-            </span>
+      <div className="flex items-start gap-3">
+        <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-md2 bg-surface-inset ring-1 ring-line-subtle">
+          {status?.favicon ? (
+            <img src={status.favicon} alt="" className="h-full w-full object-cover" style={{ imageRendering: 'pixelated' }} />
+          ) : (
+            <Server size={22} className="text-content-muted" />
           )}
         </div>
-        <div className="truncate text-small text-content-muted">{entry.address}</div>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <div className="truncate text-h3 text-content-primary">{entry.name}</div>
+          <div className="mt-0.5 truncate font-mono text-tiny text-content-muted">{entry.address}</div>
+        </div>
         {pinging ? (
-          <div className="mt-1 flex items-center gap-1.5 text-tiny text-content-muted">
-            <Spinner size={11} /> Pinging…
-          </div>
-        ) : status?.online ? (
-          <div className="mt-1 flex items-center gap-3 text-tiny text-content-secondary">
-            {status.motd && <span className="truncate max-w-[280px]">{status.motd}</span>}
-            {status.players && (
-              <span className="inline-flex shrink-0 items-center gap-1">
-                <Users size={12} /> {status.players.online}/{status.players.max}
-              </span>
-            )}
-            <span className={cn('inline-flex shrink-0 items-center gap-1', latencyColor(status.latencyMs))}>
-              <Signal size={12} /> {status.latencyMs}ms
-            </span>
-          </div>
+          <span className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-surface-inset px-2.5 text-tiny font-semibold text-content-muted">
+            <Spinner size={10} /> Checking
+          </span>
         ) : (
-          <div className="mt-1 text-tiny text-content-muted">{status?.error ?? 'Offline'}</div>
-        )}
-        {(entry.lastPlayedAt || entry.playCount > 0 || instanceName) && (
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-tiny text-content-muted">
-            {entry.lastPlayedAt && (
-              <span className="inline-flex items-center gap-1">
-                <Clock size={11} /> Played {timeAgo(entry.lastPlayedAt)}
-              </span>
+          <span
+            className={cn(
+              'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-surface-inset px-2.5 text-tiny font-semibold',
+              status?.online ? latencyColor(status.latencyMs) : 'text-content-muted'
             )}
-            <span className="inline-flex items-center gap-1">
-              <History size={11} /> {formatPlaytime(entry.totalPlayMs)} across {entry.playCount}{' '}
-              {entry.playCount === 1 ? 'visit' : 'visits'}
-            </span>
-            {instanceName && <span>via {instanceName}</span>}
-          </div>
+          >
+            <span className={cn('h-1.5 w-1.5 rounded-full', status?.online ? 'bg-current' : 'bg-content-muted')} />
+            {status?.online ? `${status.latencyMs ?? '—'} ms` : 'Offline'}
+          </span>
         )}
       </div>
-      <IconButton icon={RefreshCw} label="Refresh" variant="ghost" onClick={() => void ping()} />
-      <Button size="sm" icon={Play} onClick={onJoin} disabled={!status?.online} data-testid={`join-${entry.id}`}>
-        Join
-      </Button>
-      <IconButton
-        icon={Trash2}
-        label={`Remove ${entry.name}`}
-        variant="ghost"
-        className="opacity-0 group-hover:opacity-100"
-        onClick={onRemove}
-      />
-    </motion.div>
+
+      <div className="mt-3 min-h-[38px] text-small text-content-secondary">
+        {pinging ? (
+          <span className="text-content-muted">Reaching the server…</span>
+        ) : status?.online ? (
+          <div className="flex items-start justify-between gap-3">
+            <span className="line-clamp-2">{status.motd || status.version || 'Online and ready to join'}</span>
+            {status.players && (
+              <span className="inline-flex shrink-0 items-center gap-1 font-semibold text-content-primary">
+                <Users size={13} /> {status.players.online}/{status.players.max}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="line-clamp-2 text-content-muted">{status?.error ?? 'This server did not respond.'}</span>
+        )}
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 divide-x divide-line-subtle rounded-md2 bg-surface-inset py-2.5">
+        <div className="min-w-0 px-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-content-muted">Last played</div>
+          <div className="mt-0.5 truncate text-small font-semibold text-content-primary">
+            {entry.lastPlayedAt ? timeAgo(entry.lastPlayedAt) : 'Never'}
+          </div>
+        </div>
+        <div className="min-w-0 px-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-content-muted">Playtime</div>
+          <div className="mt-0.5 truncate text-small font-semibold text-content-primary">
+            {entry.totalPlayMs > 0 ? formatPlaytime(entry.totalPlayMs) : '—'}
+          </div>
+        </div>
+        <div className="min-w-0 px-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-content-muted">Visits</div>
+          <div className="mt-0.5 truncate text-small font-semibold text-content-primary">
+            {entry.playCount > 0 ? entry.playCount : '—'}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-auto flex items-center gap-2 border-t border-line-subtle pt-3">
+        <div className="min-w-0 flex-1 truncate text-tiny text-content-muted">
+          {entry.detected ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Sparkles size={11} /> Found while playing
+            </span>
+          ) : (
+            <span>Saved server</span>
+          )}
+          {instanceName && <span> · {instanceName}</span>}
+        </div>
+        <IconButton icon={RefreshCw} label="Refresh server" variant="ghost" size={32} iconSize={15} onClick={() => void ping()} />
+        <IconButton icon={Trash2} label={`Remove ${entry.name}`} variant="ghost" size={32} iconSize={15} onClick={onRemove} />
+        <Button size="sm" icon={Play} onClick={onJoin} disabled={!status?.online} data-testid={`join-${entry.id}`}>
+          Join
+        </Button>
+      </div>
+    </motion.article>
   )
 }
 
@@ -225,7 +243,10 @@ export function ServersScreen(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col p-6" data-testid="screen-servers">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-display text-content-primary">Servers</h1>
+        <div>
+          <h1 className="text-display text-content-primary">Servers</h1>
+          <p className="mt-1 text-small text-content-secondary">Your multiplayer history, captured automatically while you play.</p>
+        </div>
         <Button icon={Plus} onClick={() => setAddOpen(true)} data-testid="servers-add">
           Add server
         </Button>
@@ -244,7 +265,7 @@ export function ServersScreen(): React.JSX.Element {
             action={<Button icon={Plus} onClick={() => setAddOpen(true)}>Add server</Button>}
           />
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 gap-4 min-[920px]:grid-cols-2">
             <AnimatePresence initial={false}>
               {ordered.map((entry) => (
                 <ServerCard

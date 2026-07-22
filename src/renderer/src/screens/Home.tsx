@@ -3,7 +3,6 @@ import {
   ChevronRight,
   Clock,
   Download,
-  History,
   MoreVertical,
   PackageOpen,
   Play,
@@ -186,8 +185,9 @@ function BestModpacks(): React.JSX.Element {
 
   return (
     <section className="mt-8" data-testid="best-modpacks">
-      <div className="mb-4 flex items-end justify-between gap-4">
+      <div className="mb-3 flex items-end justify-between gap-4">
         <div>
+          <div className="mb-1 text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">Discover</div>
           <button
             className="group flex items-center gap-1 text-h2 font-bold text-content-primary hover:text-accent"
             onClick={() => go({ name: 'discover', contentType: 'modpack' })}
@@ -195,12 +195,9 @@ function BestModpacks(): React.JSX.Element {
             Best modpacks
             <ChevronRight size={20} className="transition-transform duration-fast group-hover:translate-x-0.5" />
           </button>
-          <p className="mt-1 text-small text-content-secondary">
-            Top community picks from Modrinth and CurseForge.
-          </p>
         </div>
         <button
-          className="text-small font-semibold text-content-secondary hover:text-accent"
+          className="rounded-full px-3 py-1.5 text-small font-semibold text-content-secondary transition-colors hover:bg-surface-hover hover:text-content-primary"
           onClick={() => go({ name: 'discover', contentType: 'modpack' })}
         >
           Browse all
@@ -210,7 +207,7 @@ function BestModpacks(): React.JSX.Element {
       {packs === null && !failed && (
         <div className="grid grid-cols-4 gap-4" aria-label="Loading best modpacks">
           {[0, 1, 2, 3].map((key) => (
-            <div key={key} className="h-40 animate-pulse rounded-card bg-surface-raised p-4">
+            <div key={key} className="h-44 animate-pulse rounded-card border border-line-subtle bg-surface-raised p-4">
               <div className="h-12 w-12 rounded-md2 bg-surface-input" />
               <div className="mt-4 h-4 w-2/3 rounded-full bg-surface-input" />
               <div className="mt-2 h-3 w-full rounded-full bg-surface-inset" />
@@ -232,35 +229,48 @@ function BestModpacks(): React.JSX.Element {
                   projectType: 'modpack'
                 })
               }
-              className="group min-w-0 rounded-card bg-surface-raised p-4 text-left transition-all duration-fast hover:-translate-y-0.5 hover:bg-surface-hover hover:shadow-card"
+              className="group relative h-44 min-w-0 overflow-hidden rounded-card border border-line-subtle bg-surface-raised p-4 text-left transition-all duration-base hover:-translate-y-0.5 hover:border-line-strong hover:bg-surface-hover hover:shadow-popover"
               data-testid={`best-modpack-${pack.projectId}`}
             >
-              <div className="flex items-start gap-3">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md2 bg-surface-inset text-content-muted">
-                  {pack.icon ? (
-                    <img src={pack.icon} alt="" loading="lazy" className="h-full w-full object-cover" />
-                  ) : (
-                    <PackageOpen size={24} />
-                  )}
+              {pack.icon && (
+                <img
+                  src={pack.icon}
+                  alt=""
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full object-cover opacity-[0.12] blur-2xl transition-transform duration-page group-hover:scale-110"
+                />
+              )}
+              <div className="relative flex h-full flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md2 bg-surface-inset text-content-muted shadow-sm ring-1 ring-line-subtle">
+                    {pack.icon ? (
+                      <img src={pack.icon} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    ) : (
+                      <PackageOpen size={22} />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 pt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-content-muted">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${pack.platform === 'modrinth' ? 'bg-[#1bd96a]' : 'bg-[#f16436]'}`}
+                    />
+                    {pack.platform === 'modrinth' ? 'Modrinth' : 'CurseForge'}
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-body font-bold text-content-primary group-hover:text-accent">
+                <div className="mt-3 min-w-0">
+                  <div className="truncate text-body font-bold text-content-primary transition-colors group-hover:text-accent">
                     {pack.title}
                   </div>
-                  <div className="mt-0.5 truncate text-tiny text-content-muted">by {pack.author}</div>
-                  <div className="mt-2 flex items-center gap-2 text-tiny font-semibold text-content-secondary">
-                    <span className="inline-flex items-center gap-1">
-                      <Download size={13} /> {formatCount(pack.downloads)}
-                    </span>
-                    <span className="rounded-full bg-surface-inset px-2 py-0.5 capitalize text-content-muted">
-                      {pack.platform}
-                    </span>
-                  </div>
+                  <div className="mt-0.5 truncate text-tiny text-content-muted">{pack.author}</div>
+                </div>
+                <div className="mt-auto flex items-center justify-between text-tiny text-content-secondary">
+                  <span className="inline-flex items-center gap-1.5 font-semibold">
+                    <Download size={13} /> {formatCount(pack.downloads)}
+                  </span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-input text-content-secondary transition-colors group-hover:bg-accent group-hover:text-accent-contrast">
+                    <ChevronRight size={15} />
+                  </span>
                 </div>
               </div>
-              <p className="mt-3 line-clamp-2 text-small leading-relaxed text-content-secondary">
-                {pack.description}
-              </p>
             </button>
           ))}
         </div>
@@ -298,6 +308,7 @@ function RecentServers({ servers }: { servers: ServerEntry[] }): React.JSX.Eleme
     <section className="mt-7" data-testid="recent-servers">
       <div className="mb-3 flex items-end justify-between gap-4">
         <div>
+          <div className="mb-1 text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">Multiplayer</div>
           <button
             className="group flex items-center gap-1 text-h2 font-bold text-content-primary hover:text-accent"
             onClick={() => go({ name: 'servers' })}
@@ -305,35 +316,43 @@ function RecentServers({ servers }: { servers: ServerEntry[] }): React.JSX.Eleme
             Recent servers
             <ChevronRight size={20} className="transition-transform group-hover:translate-x-0.5" />
           </button>
-          <p className="mt-1 text-small text-content-secondary">Detected automatically from your game logs.</p>
         </div>
         <button
-          className="text-small font-semibold text-content-secondary hover:text-accent"
+          className="rounded-full px-3 py-1.5 text-small font-semibold text-content-secondary transition-colors hover:bg-surface-hover hover:text-content-primary"
           onClick={() => go({ name: 'servers' })}
         >
-          Server history
+          View history
         </button>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 divide-x divide-line-subtle overflow-hidden rounded-card border border-line-subtle bg-surface-raised">
         {recent.map((server) => (
-          <div key={server.id} className="flex min-w-0 items-center gap-3 rounded-card bg-surface-raised p-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md2 bg-surface-inset text-content-muted">
-              <Server size={20} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-small font-bold text-content-primary">{server.name}</div>
-              <div className="truncate text-tiny text-content-muted">{server.address}</div>
-              <div className="mt-1 flex items-center gap-2 text-tiny text-content-secondary">
-                <span className="inline-flex items-center gap-1">
-                  <Clock size={11} /> {formatPlaytime(server.totalPlayMs)}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <History size={11} /> {server.playCount} {server.playCount === 1 ? 'visit' : 'visits'}
-                </span>
+          <button
+            key={server.id}
+            onClick={() => join(server)}
+            className="group min-w-0 p-4 text-left transition-colors duration-fast hover:bg-surface-hover"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md2 bg-surface-inset text-content-muted ring-1 ring-line-subtle transition-colors group-hover:text-content-primary">
+                <Server size={19} />
               </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-small font-bold text-content-primary">{server.name}</div>
+                <div className="truncate text-tiny text-content-muted">{server.address}</div>
+              </div>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-input text-content-secondary transition-colors group-hover:bg-accent group-hover:text-accent-contrast">
+                <Play size={14} fill="currentColor" />
+              </span>
             </div>
-            <IconButton icon={Play} label={`Join ${server.name}`} variant="ghost" onClick={() => join(server)} />
-          </div>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-line-subtle pt-3 text-tiny">
+              <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-content-secondary">
+                <Clock size={12} className="shrink-0" />
+                {server.lastPlayedAt ? timeAgo(server.lastPlayedAt) : 'Not played'}
+              </span>
+              <span className="shrink-0 font-semibold text-content-primary">
+                {formatPlaytime(server.totalPlayMs)} · {server.playCount}×
+              </span>
+            </div>
+          </button>
         ))}
       </div>
     </section>
@@ -376,8 +395,8 @@ export function HomeScreen(): React.JSX.Element {
         ))}
       </div>
 
-      <RecentServers servers={servers} />
       <BestModpacks />
+      <RecentServers servers={servers} />
     </div>
   )
 }
