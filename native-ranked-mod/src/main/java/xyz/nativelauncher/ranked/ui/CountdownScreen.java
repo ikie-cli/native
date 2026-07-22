@@ -7,10 +7,16 @@ import xyz.nativelauncher.ranked.RankedController;
 
 public final class CountdownScreen extends Screen {
     private final RankedController controller = RankedController.INSTANCE;
+    private NativeButton leave;
     private float phase;
 
     public CountdownScreen() {
         super(new LiteralText("Native Ranked countdown"));
+    }
+
+    @Override
+    protected void init() {
+        leave = new NativeButton("LEAVE MATCH", false, () -> controller.leaveMatch(client));
     }
 
     @Override
@@ -37,11 +43,32 @@ public final class CountdownScreen extends Screen {
         NativeDraw.centered(matrices, textRenderer, center, x + cardWidth / 2F, y + 100, NativeTheme.TEXT);
         String detail = remaining < 0 ? "Waiting for " + controller.opponentName() : "Race begins at the same instant for both players";
         NativeDraw.centered(matrices, textRenderer, NativeDraw.ellipsis(textRenderer, detail, cardWidth - 40), x + cardWidth / 2F, y + 144, NativeTheme.MUTED);
-        NativeDraw.centered(matrices, textRenderer, "Do not close this screen", x + cardWidth / 2F, y + 162, NativeTheme.DIM);
+
+        // Only offer the escape hatch while still waiting for the opponent to
+        // ready — never during the live 5-second countdown.
+        if (remaining < 0) {
+            leave.bounds((width - 184) / 2, y + cardHeight + 12, 184, 20);
+            leave.render(matrices, textRenderer, mouseX, mouseY, delta);
+        } else {
+            NativeDraw.centered(matrices, textRenderer, "Do not close this screen", x + cardWidth / 2F, y + 162, NativeTheme.DIM);
+        }
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) { return true; }
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && controller.startsAt() <= 0 && leave != null && leave.click(mouseX, mouseY)) return true;
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // Esc bails out only while waiting for the opponent (avoids a stuck screen).
+        if (keyCode == 256 && controller.startsAt() <= 0) {
+            controller.leaveMatch(client);
+            return true;
+        }
+        return true;
+    }
 
     @Override
     public boolean shouldCloseOnEsc() { return false; }

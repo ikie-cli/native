@@ -121,6 +121,9 @@ public final class NativeRankedScreen extends Screen {
         } else if (queued) {
             long seconds = Math.max(0, (System.currentTimeMillis() - controller.queuedAt()) / 1000);
             status = "Searching for an opponent  \u00b7  " + clock(seconds);
+        } else if (!controller.notice().isEmpty()) {
+            status = trim(controller.notice(), buttonWidth());
+            statusColor = NativeTheme.TEXT;
         } else {
             status = controller.username() + "  \u00b7  " + controller.rating() + " \u00b7 " + rankName(controller.rating());
         }
