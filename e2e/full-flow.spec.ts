@@ -115,7 +115,7 @@ test('seeded library renders and playtime/kebab actions work', async () => {
 
   // Home keeps three recents above the fold so Best modpacks is immediately visible.
   await expect(page.getByTestId('jump-back-row')).toHaveCount(3)
-  await expect(page.getByText('Fabulously Optimized')).toBeVisible()
+  await expect(page.getByTestId('jump-back-row').first()).toContainText('Fabulously Optimized')
 
   // Library shows cards; search filters.
   await page.getByLabel('Library').click()
