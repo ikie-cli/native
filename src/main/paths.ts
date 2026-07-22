@@ -38,7 +38,8 @@ export const URLS = {
     env('NATIVE_URL_MSA_TOKEN', 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token'),
   xblAuth: () => env('NATIVE_URL_XBL', 'https://user.auth.xboxlive.com/user/authenticate'),
   xstsAuth: () => env('NATIVE_URL_XSTS', 'https://xsts.auth.xboxlive.com/xsts/authorize'),
-  mcServices: () => env('NATIVE_URL_MC_SERVICES', 'https://api.minecraftservices.com')
+  mcServices: () => env('NATIVE_URL_MC_SERVICES', 'https://api.minecraftservices.com'),
+  ranked: () => env('NATIVE_URL_RANKED', 'http://80.225.195.237/ranked')
 }
 
 /** Root data dir; overridable for tests (NATIVE_DATA_DIR). */
@@ -64,7 +65,8 @@ export const paths = {
   cache: () => join(dataRoot(), 'cache'),
   icons: () => join(dataRoot(), 'icons'),
   backups: () => join(dataRoot(), 'backups'),
-  logs: () => join(dataRoot(), 'logs')
+  logs: () => join(dataRoot(), 'logs'),
+  rankedDeviceId: () => join(dataRoot(), 'ranked-device-id')
 }
 
 export function ensureDirs(): void {

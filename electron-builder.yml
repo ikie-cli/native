@@ -16,6 +16,8 @@ extraResources:
     to: tray.png
   - from: build/icon.ico
     to: icon.ico
+  - from: resources/native-ranked.jar
+    to: native-ranked.jar
 asarUnpack:
   - '**/*.node'
 npmRebuild: true

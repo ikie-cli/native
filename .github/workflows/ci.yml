@@ -36,6 +36,8 @@ jobs:
 
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run test:ranked
+      - run: npm run build:ranked
 
       # Unit + renderer + integration (needs Node-ABI better-sqlite3 + a JDK)
       - run: npm run rebuild:node
@@ -144,6 +146,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm run build:ranked
       - name: Configure optional code signing
         env:
           TARGET_PLATFORM: ${{ matrix.platform }}

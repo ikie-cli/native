@@ -169,6 +169,30 @@ export interface ServerStatus {
   error?: string
 }
 
+export interface RankedPlayer {
+  id: string
+  username: string
+  rating: number
+  wins: number
+  losses: number
+  races: number
+}
+
+export interface RankedStatus {
+  configured: boolean
+  online: boolean
+  instance: InstanceConfig | null
+  player: RankedPlayer | null
+  leaderboard: RankedPlayer[]
+  service: {
+    players: number
+    queued: number
+    activeMatches: number
+    completedMatches: number
+  } | null
+  error?: string
+}
+
 /** Full project page data for the mod detail view. */
 export interface ProjectDetails {
   platform: 'modrinth' | 'curseforge'

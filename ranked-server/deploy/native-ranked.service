@@ -1,0 +1,28 @@
+[Unit]
+Description=Native Ranked matchmaking service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=native-ranked
+Group=native-ranked
+WorkingDirectory=/opt/native-ranked
+Environment=NODE_ENV=production
+Environment=NATIVE_RANKED_HOST=127.0.0.1
+Environment=NATIVE_RANKED_PORT=3847
+Environment=NATIVE_RANKED_DB=/var/lib/native-ranked/ranked.db
+Environment=NATIVE_RANKED_ARTIFACTS=/var/lib/native-ranked/artifacts
+ExecStart=/usr/bin/node /opt/native-ranked/src/index.mjs
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/native-ranked
+CapabilityBoundingSet=
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

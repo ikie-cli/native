@@ -316,13 +316,41 @@ export async function startE2EFixture(opts: { sleepClient?: boolean } = {}): Pro
     ]
   })
 
+  // ---- Native Ranked public status ----
+  json(fx, '/ranked/health', {
+    ok: true,
+    service: 'native-ranked',
+    version: '0.1.0',
+    players: 12,
+    queued: 2,
+    activeMatches: 1,
+    completedMatches: 48
+  })
+  json(fx, '/ranked/v1/leaderboard?limit=10', {
+    players: [
+      { id: 'r1', username: 'Feinberg', rating: 1842, wins: 37, losses: 9, races: 46 },
+      { id: 'r2', username: 'Couriway', rating: 1768, wins: 29, losses: 11, races: 40 },
+      { id: 'r3', username: 'Fruitberries', rating: 1694, wins: 25, losses: 13, races: 38 },
+      { id: 'r4', username: 'Ninjabrain', rating: 1581, wins: 19, losses: 12, races: 31 }
+    ]
+  })
+  json(fx, '/ranked/v1/auth/register', {
+    token: 'e2e-ranked-token',
+    player: { id: 'ranked-test-player', username: 'TestPlayer', rating: 1000, wins: 0, losses: 0, races: 0 }
+  })
+  json(fx, '/ranked/v1/profile', {
+    player: { id: 'ranked-test-player', username: 'TestPlayer', rating: 1000, wins: 0, losses: 0, races: 0 },
+    history: []
+  })
+
   const env: Record<string, string> = {
     NATIVE_URL_VERSION_MANIFEST: `${fx.baseUrl}/manifest.json`,
     NATIVE_URL_RESOURCES: `${fx.baseUrl}/resources`,
     NATIVE_URL_FABRIC_META: fx.baseUrl,
     NATIVE_URL_MODRINTH: fx.baseUrl,
     NATIVE_URL_CURSEFORGE: fx.baseUrl,
-    NATIVE_URL_LAUNCHER_CONTENT: fx.baseUrl
+    NATIVE_URL_LAUNCHER_CONTENT: fx.baseUrl,
+    NATIVE_URL_RANKED: `${fx.baseUrl}/ranked`
   }
   return { fx, env, close: () => fx.close() }
 }
