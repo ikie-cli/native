@@ -153,7 +153,7 @@ export class RankedService {
     const localCandidates = [
       join(process.resourcesPath, MOD_FILE),
       join(process.cwd(), 'resources', MOD_FILE),
-      join(process.cwd(), 'native-ranked-mod', 'build', 'libs', 'native-ranked-0.2.0.jar')
+      join(process.cwd(), 'native-ranked-mod', 'build', 'libs', 'native-ranked-0.3.0.jar')
     ]
     let bytes: Buffer | null = null
     try {

@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion'
-import { Activity, CircleDot, Play, RefreshCw, Shield, Sparkles, Trophy } from 'lucide-react'
+import { Activity, Play, RefreshCw, Shield, Sparkles, Trophy } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { RankedPlayer, RankedStatus } from '@shared/types'
 import { Button, Chip } from '@/components/ui/ui'
-import { toastError, useInstances, useRunning, useToasts } from '@/stores/data'
-import heroArt from '@/assets/ranked/hero.png'
+import type { PlayerHeadAccount } from '@/components/PlayerHead'
+import { SkinViewer3D } from '@/components/SkinViewer'
+import { toastError, useAccounts, useInstances, useRunning, useToasts } from '@/stores/data'
 
 const EMPTY: RankedStatus = {
   configured: false,
@@ -41,6 +42,7 @@ export function RankedScreen(): React.JSX.Element {
   const [working, setWorking] = useState(false)
   const refreshInstances = useInstances((s) => s.refresh)
   const running = useRunning((s) => s.running)
+  const account = useAccounts((s) => s.accounts.find((a) => a.active) ?? null)
   const push = useToasts((s) => s.push)
 
   const refresh = useCallback(async () => {
@@ -97,7 +99,7 @@ export function RankedScreen(): React.JSX.Element {
 
   const displayName = loading
     ? 'Loading…'
-    : (status.player?.username ?? (status.configured ? 'Reconnect required' : 'Not set up'))
+    : (status.player?.username ?? account?.username ?? (status.configured ? 'Reconnect required' : 'Not set up'))
   const tier = status.player ? tierInfo(status.player.rating) : null
 
   return (
@@ -119,22 +121,17 @@ export function RankedScreen(): React.JSX.Element {
             <span className="text-h3 font-extrabold tracking-tight text-content-primary">NATIVE RANKED</span>
             <Chip>SEASON ZERO</Chip>
           </div>
-          <div className="flex items-center gap-2">
-            <Chip icon={CircleDot} className={status.online ? 'text-content-primary' : 'text-danger'}>
-              {status.online ? 'SERVICE ONLINE' : 'SERVICE OFFLINE'}
-            </Chip>
-            <Chip>1.16.1 · FABRIC</Chip>
-          </div>
+          <Chip>1.16.1 · FABRIC</Chip>
         </header>
 
-        {/* Stage: rank/stats · character · standings */}
+        {/* Stage: rank/stats · skin · standings */}
         <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)_minmax(0,0.96fr)] items-center gap-5 px-7">
           <div className="flex flex-col gap-3">
             <RankBadge player={status.player} rank={playerRank} tier={tier} configured={status.configured} />
             <StatStrip player={status.player} />
           </div>
 
-          <CharacterStage name={displayName} tierName={tier?.name ?? null} rating={status.player?.rating ?? null} />
+          <CharacterStage account={account} name={displayName} tierName={tier?.name ?? null} rating={status.player?.rating ?? null} />
 
           <Standings players={status.leaderboard} loading={loading} currentId={status.player?.id} />
         </div>
@@ -169,25 +166,22 @@ export function RankedScreen(): React.JSX.Element {
 }
 
 function CharacterStage({
+  account,
   name,
   tierName,
   rating
 }: {
+  account: PlayerHeadAccount
   name: string
   tierName: string | null
   rating: number | null
 }): React.JSX.Element {
   return (
     <div className="relative flex h-full flex-col items-center justify-center">
-      {/* Grounding shadow under the character. */}
-      <div className="pointer-events-none absolute bottom-[76px] h-5 w-44 rounded-[100%] bg-black/60 blur-md" />
-      <img
-        src={heroArt}
-        alt=""
-        draggable={false}
-        className="relative w-[236px] max-w-full select-none object-contain drop-shadow-[0_22px_46px_rgba(0,0,0,0.6)]"
-      />
-      <div className="relative mt-2 text-center">
+      {/* Grounding shadow under the model. */}
+      <div className="pointer-events-none absolute bottom-[58px] h-5 w-40 rounded-[100%] bg-black/60 blur-md" />
+      <SkinViewer3D account={account} width={248} height={370} className="relative select-none" />
+      <div className="relative -mt-1 text-center">
         <div className="max-w-[220px] truncate text-h2 font-bold leading-tight text-content-primary">{name}</div>
         <div className="mt-0.5 text-small text-content-secondary">
           {tierName ? `${tierName}${rating != null ? ` · ${rating}` : ''}` : 'Set up to enter the season'}
