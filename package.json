@@ -51,7 +51,8 @@
     "electron-log": "^5.2.4",
     "electron-updater": "^6.3.9",
     "marked": "^18.0.7",
-    "msmc": "^5.0.5"
+    "msmc": "^5.0.5",
+    "skinview3d": "^3.4.2"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",

@@ -191,11 +191,10 @@ public final class NativeRankedScreen extends Screen {
             drawCentered(matrices, "No completed races yet", centerX, y, NativeTheme.DIM);
         }
 
-        // Service badge, bottom-right like the reference version line.
-        String badge = (controller.online() ? "SERVICE ONLINE" : "SERVICE OFFLINE") + "  \u00b7  BETA";
-        int badgeColor = controller.online() ? NativeTheme.GREEN : NativeTheme.RED;
+        // Version tag, bottom-right (service status intentionally omitted).
+        String badge = "SEASON ZERO  \u00b7  BETA";
         textRenderer.drawWithShadow(matrices, badge,
-            width - rightMargin - textRenderer.getWidth(badge), height - 16, badgeColor);
+            width - rightMargin - textRenderer.getWidth(badge), height - 16, NativeTheme.DIM);
     }
 
     private void drawCentered(MatrixStack matrices, String text, int centerX, int y, int color) {
