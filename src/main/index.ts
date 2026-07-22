@@ -23,6 +23,8 @@ if (!app.requestSingleInstanceLock()) {
   let win: BrowserWindow | null = null
   // Held at module scope so the OS tray icon isn't garbage collected.
   let tray: Tray | null = null
+  // Held at module scope so `before-quit` can tear down the Discord socket.
+  let discord: import('./services/discord').DiscordRpc | null = null
 
   // Runtime assets live beside the app: bundled into resources/ when packaged,
   // under <appPath>/resources/ in dev.
@@ -114,6 +116,8 @@ if (!app.requestSingleInstanceLock()) {
       autoDownload: settings.autoUpdateDownload,
       channel: settings.updateChannel
     })
+    if (settings.discordRpc && !process.env.NATIVE_E2E) services.discord.setEnabled(true)
+    discord = services.discord
 
     if (isDev && process.env.ELECTRON_RENDERER_URL) {
       void win.loadURL(process.env.ELECTRON_RENDERER_URL)
@@ -147,6 +151,7 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.on('before-quit', () => {
+    discord?.shutdown()
     io.shutdown()
     closeDb()
   })

@@ -24,6 +24,7 @@ import { FilesService } from './services/files'
 import { IconsService } from './services/icons'
 import { fetchNews } from './services/news'
 import { UpdaterService } from './services/updater'
+import { DiscordRpc } from './services/discord'
 import { LaunchManager } from './core/launch'
 import { DownloadManager } from './core/download'
 import { getManifest } from './core/manifest'
@@ -41,6 +42,7 @@ export interface Services {
   instances: InstancesService
   launcher: LaunchManager
   updater: UpdaterService
+  discord: DiscordRpc
   /** Swapped for a renderer-backed dialog in registerIpc; auto-approves headless. */
   javaConfirm: { handler: (req: Omit<JavaDownloadRequest, 'requestId'>) => Promise<boolean> }
 }
@@ -78,12 +80,13 @@ export function buildServices(): Services {
     confirmJavaDownload: (req) => javaConfirm.handler(req)
   })
   const updater = new UpdaterService()
-  return { settings, accounts, instances, launcher, updater, javaConfirm }
+  const discord = new DiscordRpc()
+  return { settings, accounts, instances, launcher, updater, discord, javaConfirm }
 }
 
 export function registerIpc(win: BrowserWindow, services: Services): void {
   const db = openDb()
-  const { settings, accounts, instances, launcher, updater } = services
+  const { settings, accounts, instances, launcher, updater, discord } = services
   const content = new ContentService(db, () => CURSEFORGE_API_KEY)
   const servers = new ServersService(db)
   const icons = new IconsService()
@@ -193,6 +196,10 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   )
   launcher.on('changed', (list) => {
     send(IPC.running.onChanged, list)
+    // Discord presence follows the most-recently-started game (or idle).
+    const top = list[list.length - 1]
+    const inst = top ? instances.get(top.instanceId) : null
+    discord.set(inst ? { instance: inst, startedAt: top.startedAt } : null)
     if (list.length === 0 && settings.get().launchBehavior === 'close' && !win.isVisible()) {
       win.show()
     }
@@ -431,6 +438,7 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
     const next = settings.set(patch)
     if (patch.autoUpdateDownload !== undefined) updater.setAutoDownload(next.autoUpdateDownload)
     if (patch.updateChannel !== undefined) updater.setChannel(next.updateChannel)
+    if (patch.discordRpc !== undefined) discord.setEnabled(next.discordRpc)
     send(IPC.settings.onChanged, next)
     return next
   })

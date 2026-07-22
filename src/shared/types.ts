@@ -346,6 +346,8 @@ export interface AppSettings {
   autoUpdateCheck: boolean
   autoUpdateDownload: boolean
   updateChannel: 'latest' | 'beta' | 'nightly'
+  /** Show current instance as Discord Rich Presence. */
+  discordRpc: boolean
   /** First-run guided tour: flips true once finished or skipped. */
   onboardingDone: boolean
 }
@@ -364,6 +366,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoUpdateCheck: true,
   autoUpdateDownload: true,
   updateChannel: 'latest',
+  discordRpc: true,
   onboardingDone: false
 }
 

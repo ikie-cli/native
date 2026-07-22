@@ -139,6 +139,9 @@ function GeneralPane(): React.JSX.Element {
           ]}
         />
       </Row>
+      <Row title="Discord presence" detail="Show the instance you're playing on your Discord profile.">
+        <Toggle checked={settings.discordRpc} onChange={(v) => void set({ discordRpc: v })} />
+      </Row>
       <Row title="Language" detail="More languages are on the way.">
         <Select
           value={settings.language}
