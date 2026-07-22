@@ -18,7 +18,7 @@ Generated 2026-07-22 · threshold **85%** (empty/error states: 75% — sparse by
 | launch-console | ref-113614.png | 87.1% | 95.2% | 96.7% | **91.8%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | library-empty | ref-113521.png | 85.9% | 94.4% | 92.4% | **90.2%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | library | ref-113521.png | 85.0% | 92.5% | 93.6% | **89.4%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
-| ranked | ref-113405.png | 80.3% | 91.5% | 96.7% | **87.5%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
+| ranked | ref-113405.png | 81.4% | 91.2% | 97.6% | **88.1%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | servers-empty | ref-113521.png | 84.6% | 94.2% | 90.8% | **89.2%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | servers | ref-113521.png | 81.1% | 93.0% | 93.2% | **87.7%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | settings | ref-113645.png | 89.3% | 91.3% | 94.2% | **91.0%** | ✅ pass | palette matches, layout aligned, tonal balance matches |

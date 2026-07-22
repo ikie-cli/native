@@ -37,6 +37,7 @@ public final class RankedController {
     private volatile String queueState = "idle";
     private volatile long queuedAt;
     private volatile String error = "";
+    private volatile String notice = "";
     private volatile boolean online;
     private volatile boolean busy;
     private long nextPoll;
@@ -73,6 +74,13 @@ public final class RankedController {
         JsonObject current = match;
         if (current == null) return;
         String status = string(current, "status", "");
+        // A match can be abandoned before it ever starts (opponent never readies)
+        // or swept as stale by the server. Never leave the player stuck — bail out.
+        if ("expired".equals(status) || "cancelled".equals(status) || "void".equals(status)) {
+            notice = "Match ended \u2014 opponent left or it timed out.";
+            returnHome(client);
+            return;
+        }
         if ("preparing".equals(status) && client.world == null && !worldRequested) createRaceWorld(client, current);
         if (client.world != null && worldRequested && !readySent) {
             readySent = true;
@@ -104,6 +112,7 @@ public final class RankedController {
     public void join(String mode) {
         if (!config.isReady() || busy) return;
         busy = true;
+        notice = "";
         JsonObject payload = new JsonObject();
         payload.addProperty("mode", mode);
         submit(() -> applyQueue(api.post("/v1/queue", payload)), true);
@@ -117,6 +126,18 @@ public final class RankedController {
             queueState = "idle";
             queuedAt = 0;
         }, true);
+    }
+
+    /** Forfeit and leave the current match, returning to the ranked home screen. */
+    public void leaveMatch(MinecraftClient client) {
+        JsonObject current = match;
+        if (current != null && !"finished".equals(string(current, "status", ""))) {
+            String id = string(current, "id", "");
+            // Fire-and-forget so we don't re-assign `match` after resetRace().
+            submit(() -> api.post("/v1/matches/" + id + "/forfeit", new JsonObject()), false);
+        }
+        notice = "You left the match.";
+        returnHome(client);
     }
 
     public void finishRace() {
@@ -154,6 +175,17 @@ public final class RankedController {
     public boolean online() { return online; }
     public boolean busy() { return busy; }
     public String error() { return error; }
+    public String notice() { return notice; }
+
+    /** True while a match is live (not finished/expired) — used to lock down cheats. */
+    public boolean matchActive() {
+        JsonObject current = match;
+        if (current == null) return false;
+        String status = string(current, "status", "");
+        return !"finished".equals(status) && !"expired".equals(status)
+            && !"cancelled".equals(status) && !"void".equals(status);
+    }
+
     public String queueState() { return queueState; }
     public long queuedAt() { return queuedAt; }
     public JsonObject profile() { return profile; }
@@ -255,12 +287,18 @@ public final class RankedController {
     }
 
     private void applyQueue(JsonObject response) {
+        String previous = queueState;
         queueState = string(response, "state", "idle");
         queuedAt = number(response, "joinedAt", queuedAt);
         JsonObject found = object(response, "match");
         if (found != null) {
             match = found;
             queueState = "matched";
+            notice = "";
+        } else if ("queued".equals(previous) && "idle".equals(queueState)) {
+            // Server expired our queue entry before an opponent showed up.
+            notice = "Search timed out \u2014 no opponent found. Try again.";
+            queuedAt = 0;
         }
     }
 

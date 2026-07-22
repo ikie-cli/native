@@ -42,6 +42,16 @@ public final class RaceHud {
 
     private static String pretty(String progress) {
         if (progress == null || progress.isEmpty()) return "Waiting";
-        return Character.toUpperCase(progress.charAt(0)) + progress.substring(1);
+        switch (progress.toLowerCase(java.util.Locale.ROOT)) {
+            case "waiting": return "Waiting";
+            case "overworld": return "Overworld";
+            case "nether": return "Nether";
+            case "bastion": return "Pearls";
+            case "fortress": return "Blaze rods";
+            case "stronghold": return "Eyes";
+            case "end": return "The End";
+            case "finished": return "Finished";
+            default: return Character.toUpperCase(progress.charAt(0)) + progress.substring(1);
+        }
     }
 }
