@@ -89,8 +89,8 @@ test('matches two verified players on the same seed and applies Elo', async () =
   const pb = await request('/v1/profile', {}, b.token)
   assert.equal(pa.body.player.wins, 1)
   assert.equal(pb.body.player.losses, 1)
-  assert.equal(pa.body.player.rating, 1016)
-  assert.equal(pb.body.player.rating, 984)
+  assert.equal(pa.body.player.rating, 1020)
+  assert.equal(pb.body.player.rating, 980)
 })
 
 test('rejects bad identities and tokens', async () => {
@@ -203,4 +203,19 @@ test('rejects an implausibly fast split (anti-cheat)', async () => {
   const res = await request(`/v1/matches/${match.id}/finish`, { method: 'POST' }, a.token)
   assert.equal(res.status, 400)
   assert.match(res.body.error, /nether/)
+})
+
+test('a new season soft-resets ratings and bumps the season label', async () => {
+  const p = await verified('SeasonPlayer')
+  app.store.db.prepare('UPDATE players SET rating = 1200, wins = 5, losses = 3 WHERE id = ?').run(p.player.id)
+  const before = app.store.season()
+  const next = app.store.startNewSeason()
+  assert.equal(next, before + 1)
+  // Rating is compressed halfway to 1000; record is cleared for the new season.
+  const prof = await request('/v1/profile', {}, p.token)
+  assert.equal(prof.body.player.rating, 1100)
+  assert.equal(prof.body.player.wins, 0)
+  assert.equal(prof.body.player.losses, 0)
+  const q = await request('/v1/queue', {}, p.token)
+  assert.equal(q.body.season, next)
 })
