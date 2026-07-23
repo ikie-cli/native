@@ -27,18 +27,18 @@ public final class NativeConfig {
     public static NativeConfig load(Path runDirectory) {
         Path file = runDirectory.resolve("native-ranked.json");
         if (!Files.isRegularFile(file)) {
-            return new NativeConfig("http://80.225.195.237/ranked", "", "", "Player");
+            return new NativeConfig("https://api.nativelaunch.xyz", "", "", "Player");
         }
         try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             JsonObject json = GSON.fromJson(reader, JsonObject.class);
             return new NativeConfig(
-                string(json, "endpoint", "http://80.225.195.237/ranked"),
+                string(json, "endpoint", "https://api.nativelaunch.xyz"),
                 string(json, "token", ""),
                 string(json, "playerId", ""),
                 string(json, "username", "Player")
             );
         } catch (IOException | RuntimeException ignored) {
-            return new NativeConfig("http://80.225.195.237/ranked", "", "", "Player");
+            return new NativeConfig("https://api.nativelaunch.xyz", "", "", "Player");
         }
     }
 

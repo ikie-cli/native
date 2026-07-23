@@ -39,7 +39,7 @@ export const URLS = {
   xblAuth: () => env('NATIVE_URL_XBL', 'https://user.auth.xboxlive.com/user/authenticate'),
   xstsAuth: () => env('NATIVE_URL_XSTS', 'https://xsts.auth.xboxlive.com/xsts/authorize'),
   mcServices: () => env('NATIVE_URL_MC_SERVICES', 'https://api.minecraftservices.com'),
-  ranked: () => env('NATIVE_URL_RANKED', 'http://80.225.195.237/ranked')
+  ranked: () => env('NATIVE_URL_RANKED', 'https://api.nativelaunch.xyz')
 }
 
 /** Root data dir; overridable for tests (NATIVE_DATA_DIR). */
