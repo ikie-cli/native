@@ -44,7 +44,7 @@ public final class LeaderboardScreen extends Screen {
         int right = width - margin();
 
         NativeDraw.displayText(matrices, textRenderer, "LEADERBOARD", left, 38, NativeTheme.TEXT);
-        NativeDraw.text(matrices, textRenderer, "SEASON ZERO  \u00b7  GLOBAL STANDINGS", left, 64, NativeTheme.MUTED);
+        NativeDraw.text(matrices, textRenderer, "SEASON " + controller.season() + "  \u00b7  GLOBAL STANDINGS", left, 64, NativeTheme.MUTED);
         NativeDraw.line(matrices, left, 84, right, 84, 1F, NativeTheme.BORDER);
 
         NativeDraw.text(matrices, textRenderer, "#", left, 92, NativeTheme.DIM);

@@ -16,10 +16,8 @@ import java.util.Locale;
 
 /**
  * Vanilla-styled home screen for the standalone Native Ranked client: the real
- * Minecraft panorama, stock {@link ButtonWidget}s on the left (play + navigation),
- * and the Native logo with a compact profile card on the right. The leaderboard
- * and full profile live on their own screens ({@link LeaderboardScreen},
- * {@link ProfileScreen}).
+ * Minecraft panorama, stock buttons on the left (play / rejoin / navigation),
+ * and the Native logo with a compact profile card on the right.
  */
 public final class NativeRankedScreen extends Screen {
     private static final Identifier PANORAMA_OVERLAY =
@@ -32,6 +30,8 @@ public final class NativeRankedScreen extends Screen {
     private ButtonWidget rankedButton;
     private ButtonWidget casualButton;
     private ButtonWidget cancelButton;
+    private ButtonWidget rejoinButton;
+    private ButtonWidget forfeitButton;
     private ButtonWidget leaderboardButton;
     private ButtonWidget profileButton;
     private float fade;
@@ -53,6 +53,12 @@ public final class NativeRankedScreen extends Screen {
         cancelButton = addButton(new ButtonWidget(left, baseY, buttonWidth, 20,
             new LiteralText("Cancel Search"), button -> controller.leaveQueue()));
 
+        // Reconnection: shown when a running match exists but we have no world.
+        rejoinButton = addButton(new ButtonWidget(left, baseY, buttonWidth, 20,
+            new LiteralText("Rejoin Match"), button -> controller.rejoinMatch(client)));
+        forfeitButton = addButton(new ButtonWidget(left, baseY + 24, buttonWidth, 20,
+            new LiteralText("Forfeit Match"), button -> controller.leaveMatch(client)));
+
         int half = (buttonWidth - 6) / 2;
         leaderboardButton = addButton(new ButtonWidget(left, baseY + 48, half, 20,
             new LiteralText("Leaderboard"), button -> client.openScreen(new LeaderboardScreen(this))));
@@ -62,20 +68,23 @@ public final class NativeRankedScreen extends Screen {
         updateButtons();
     }
 
-    /** Keeps the vanilla buttons in sync with the controller state. */
     private void updateButtons() {
         if (rankedButton == null) return;
         boolean queued = "queued".equals(controller.queueState());
+        boolean rejoin = controller.canRejoin();
         boolean ready = controller.configured() && controller.online() && !controller.busy();
 
-        rankedButton.visible = !queued;
-        casualButton.visible = !queued;
-        cancelButton.visible = queued;
+        rankedButton.visible = !queued && !rejoin;
+        casualButton.visible = !queued && !rejoin;
+        cancelButton.visible = queued && !rejoin;
+        rejoinButton.visible = rejoin;
+        forfeitButton.visible = rejoin;
 
         // Ranked is premium-only; offline accounts are limited to casual.
         rankedButton.active = ready && controller.verified();
         casualButton.active = ready;
         cancelButton.active = !controller.busy();
+        forfeitButton.active = !controller.busy();
 
         leaderboardButton.active = true;
         profileButton.active = controller.configured();
@@ -95,8 +104,6 @@ public final class NativeRankedScreen extends Screen {
         super.render(matrices, mouseX, mouseY, delta);
     }
 
-    // ----- background -------------------------------------------------------
-
     private void renderPanorama(MatrixStack matrices, float delta) {
         panorama.render(delta, 1.0F);
         client.getTextureManager().bindTexture(PANORAMA_OVERLAY);
@@ -110,14 +117,13 @@ public final class NativeRankedScreen extends Screen {
         fillGradient(matrices, 0, height - 168, width, height, 0x00000000, 0x99000000);
     }
 
-    // ----- left column: status + vanilla buttons ---------------------------
-
     private void renderActionsColumn(MatrixStack matrices) {
         int left = leftMargin();
         boolean queued = "queued".equals(controller.queueState());
+        boolean rejoin = controller.canRejoin();
         int titleY = rankedButton != null ? rankedButton.y - 34 : height - 138;
 
-        String title = queued ? "MATCHMAKING" : "PLAY NATIVE RANKED";
+        String title = rejoin ? "MATCH IN PROGRESS" : queued ? "MATCHMAKING" : "PLAY NATIVE RANKED";
         textRenderer.drawWithShadow(matrices, title, left, titleY, NativeTheme.TEXT);
 
         String status;
@@ -125,6 +131,9 @@ public final class NativeRankedScreen extends Screen {
         if (!controller.configured()) {
             status = controller.error().isEmpty() ? "Signing in with your Minecraft account\u2026" : trim(controller.error(), buttonWidth() + 40);
             statusColor = controller.error().isEmpty() ? NativeTheme.MUTED : NativeTheme.RED;
+        } else if (rejoin) {
+            status = "Race in progress \u2014 rejoin to continue, or forfeit.";
+            statusColor = NativeTheme.TEXT;
         } else if (!controller.error().isEmpty()) {
             status = trim(controller.error(), buttonWidth() + 40);
             statusColor = NativeTheme.RED;
@@ -138,13 +147,11 @@ public final class NativeRankedScreen extends Screen {
         } else if (!controller.verified()) {
             status = controller.username() + "  \u00b7  Casual only \u2014 sign in with a premium account for ranked";
         } else {
-            status = controller.username() + "  \u00b7  " + controller.rating() + " \u00b7 " + rankName(controller.rating())
+            status = controller.username() + "  \u00b7  " + controller.rating() + " \u00b7 " + Ranks.name(controller.rating())
                 + (controller.playersOnline() > 0 ? "  \u00b7  " + controller.playersOnline() + " online" : "");
         }
         textRenderer.drawWithShadow(matrices, status, left, titleY + 15, statusColor);
     }
-
-    // ----- right column: real logo + compact profile card -------------------
 
     private void renderBrandColumn(MatrixStack matrices) {
         int rightMargin = leftMargin();
@@ -174,7 +181,7 @@ public final class NativeRankedScreen extends Screen {
         y += 13;
         String tier = !controller.configured()
             ? "Not signed in"
-            : (controller.verified() ? rankName(controller.rating()) : "Offline account");
+            : (controller.verified() ? Ranks.name(controller.rating()) : "Offline account");
         drawCentered(matrices, tier.toUpperCase(Locale.ROOT), centerX, y, NativeTheme.MUTED);
         y += 15;
         drawCentered(matrices,
@@ -184,7 +191,7 @@ public final class NativeRankedScreen extends Screen {
         String tag = controller.verified() ? "\u2713 PREMIUM VERIFIED" : "OFFLINE \u00b7 CASUAL ONLY";
         drawCentered(matrices, tag, centerX, y, controller.verified() ? NativeTheme.GREEN : NativeTheme.DIM);
 
-        String badge = "SEASON ZERO  \u00b7  BETA";
+        String badge = "SEASON " + controller.season() + "  \u00b7  BETA";
         textRenderer.drawWithShadow(matrices, badge,
             width - rightMargin - textRenderer.getWidth(badge), height - 16, NativeTheme.DIM);
     }
@@ -215,15 +222,6 @@ public final class NativeRankedScreen extends Screen {
 
     private int buttonWidth() {
         return MathHelper.clamp(width * 2 / 5, 170, 230);
-    }
-
-    private static String rankName(int rating) {
-        if (rating >= 1800) return "Native Master";
-        if (rating >= 1500) return "Diamond";
-        if (rating >= 1250) return "Platinum";
-        if (rating >= 1050) return "Gold";
-        if (rating >= 850) return "Silver";
-        return "Bronze";
     }
 
     private static String clock(long seconds) {

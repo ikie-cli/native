@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
-import { ratingChange } from './rating.mjs'
+import { seasonRatingChange } from './rating.mjs'
 
 const PROGRESS = ['waiting', 'overworld', 'nether', 'bastion', 'fortress', 'stronghold', 'end', 'finished']
 
@@ -53,6 +53,7 @@ export class RankedStore {
         rating INTEGER NOT NULL DEFAULT 1000,
         wins INTEGER NOT NULL DEFAULT 0,
         losses INTEGER NOT NULL DEFAULT 0,
+        season INTEGER NOT NULL DEFAULT 1,
         created_at INTEGER NOT NULL,
         last_seen_at INTEGER NOT NULL
       );
@@ -84,7 +85,9 @@ export class RankedStore {
       );
       CREATE INDEX IF NOT EXISTS idx_matches_created ON matches(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_match_players_player ON match_players(player_id, match_id);
+      CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     `)
+    this.db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('season', '1')").run()
     // Migration: premium-verified flag for existing databases.
     const cols = this.db.prepare('PRAGMA table_info(players)').all().map((c) => c.name)
     if (!cols.includes('verified')) {
@@ -93,6 +96,9 @@ export class RankedStore {
     const mpCols = this.db.prepare('PRAGMA table_info(match_players)').all().map((c) => c.name)
     if (!mpCols.includes('splits')) {
       this.db.exec("ALTER TABLE match_players ADD COLUMN splits TEXT NOT NULL DEFAULT '{}'")
+    }
+    if (!cols.includes('season')) {
+      this.db.exec('ALTER TABLE players ADD COLUMN season INTEGER NOT NULL DEFAULT 1')
     }
   }
 
@@ -130,7 +136,8 @@ export class RankedStore {
       `).run(randomUUID(), profileKey, username, hashToken(token), now, now)
     }
     const row = this.db.prepare('SELECT * FROM players WHERE profile_key = ?').get(profileKey)
-    return { token, player: publicPlayer(row) }
+    this.ensureSeason(row.id)
+    return { token, player: publicPlayer(this.db.prepare('SELECT * FROM players WHERE id = ?').get(row.id)) }
   }
 
   /** Issue a verified token for a Mojang-authenticated (premium) player, keyed by real UUID. */
@@ -151,15 +158,17 @@ export class RankedStore {
       `).run(randomUUID(), profileKey, username, hashToken(token), now, now)
     }
     const row = this.db.prepare('SELECT * FROM players WHERE profile_key = ?').get(profileKey)
-    return { token, player: publicPlayer(row) }
+    this.ensureSeason(row.id)
+    return { token, player: publicPlayer(this.db.prepare('SELECT * FROM players WHERE id = ?').get(row.id)) }
   }
 
   authenticate(token) {
     if (!token) return null
     const row = this.db.prepare('SELECT * FROM players WHERE token_hash = ?').get(hashToken(token))
     if (!row) return null
+    this.ensureSeason(row.id)
     this.db.prepare('UPDATE players SET last_seen_at = ? WHERE id = ?').run(Date.now(), row.id)
-    return publicPlayer(row)
+    return publicPlayer(this.db.prepare('SELECT * FROM players WHERE id = ?').get(row.id))
   }
 
   profile(playerId) {
@@ -206,8 +215,34 @@ export class RankedStore {
   counts() {
     const now = Date.now()
     return {
+      season: this.season(),
       online: this.db.prepare('SELECT count(*) AS n FROM players WHERE last_seen_at > ?').get(now - 600_000).n,
       queued: this.db.prepare('SELECT count(*) AS n FROM queue').get().n
+    }
+  }
+
+  season() {
+    const row = this.db.prepare("SELECT value FROM meta WHERE key = 'season'").get()
+    return row ? parseInt(row.value, 10) || 1 : 1
+  }
+
+  /** Advance to the next season, soft-resetting every player's rating and record. */
+  startNewSeason() {
+    const next = this.season() + 1
+    this.transaction(() => {
+      this.db.prepare('UPDATE players SET rating = CAST(ROUND(1000 + (rating - 1000) * 0.5) AS INTEGER), wins = 0, losses = 0, season = ?').run(next)
+      this.db.prepare("UPDATE meta SET value = ? WHERE key = 'season'").run(String(next))
+    })
+    return next
+  }
+
+  /** Lazily soft-reset a player when they return in a newer season. */
+  ensureSeason(playerId) {
+    const current = this.season()
+    const row = this.db.prepare('SELECT season, rating FROM players WHERE id = ?').get(playerId)
+    if (row && row.season !== current) {
+      const compressed = Math.round(1000 + (row.rating - 1000) * 0.5)
+      this.db.prepare('UPDATE players SET rating = ?, wins = 0, losses = 0, season = ? WHERE id = ?').run(compressed, current, playerId)
     }
   }
 
@@ -362,7 +397,13 @@ export class RankedStore {
     const players = this.db.prepare('SELECT * FROM match_players WHERE match_id = ?').all(matchId)
     const winner = players.find((p) => p.player_id === winnerId)
     const loser = players.find((p) => p.player_id !== winnerId)
-    const delta = match.mode === 'ranked' ? ratingChange(winner.rating_before, loser.rating_before) : { winner: 0, loser: 0 }
+    const gamesOf = (id) => {
+      const r = this.db.prepare('SELECT wins + losses AS g FROM players WHERE id = ?').get(id)
+      return r ? r.g : 0
+    }
+    const delta = match.mode === 'ranked'
+      ? seasonRatingChange(winner.rating_before, loser.rating_before, gamesOf(winnerId), gamesOf(loser.player_id))
+      : { winner: 0, loser: 0 }
     this.transaction(() => {
       this.db.prepare(`UPDATE matches SET status = 'finished', finished_at = ?, winner_id = ? WHERE id = ?`)
         .run(Date.now(), winnerId, matchId)

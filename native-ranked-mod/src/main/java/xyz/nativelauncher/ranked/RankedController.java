@@ -11,6 +11,7 @@ import net.minecraft.client.gui.screen.world.CreateWorldScreen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.item.Items;
 import net.minecraft.world.World;
+import net.minecraft.world.level.storage.LevelSummary;
 import xyz.nativelauncher.ranked.mixin.CreateWorldScreenAccessor;
 import xyz.nativelauncher.ranked.mixin.MoreOptionsDialogAccessor;
 import xyz.nativelauncher.ranked.ui.CountdownScreen;
@@ -44,6 +45,7 @@ public final class RankedController {
     private volatile boolean busy;
     private volatile int playersOnline;
     private volatile int playersQueued;
+    private volatile int season = 1;
     private long nextPoll;
     private boolean redirected;
     private boolean worldRequested;
@@ -114,10 +116,9 @@ public final class RankedController {
             if (raceStarted) detectProgress(client);
         }
 
-        if (client.world == null && raceStarted && !"finished".equals(status) && !forfeitSent) {
-            forfeitSent = true;
-            postMatch("forfeit", new JsonObject());
-        }
+        // Leaving the world no longer auto-forfeits: the match stays live so the
+        // player can rejoin (or forfeit) from the home screen, while the opponent
+        // still wins by finishing. See rejoinMatch()/leaveMatch().
         if ("finished".equals(status) && !resultShown) {
             resultShown = true;
             client.openScreen(new RaceResultScreen());
@@ -161,6 +162,37 @@ public final class RankedController {
         returnHome(client);
     }
 
+    /** Reopen the saved race world to rejoin a running match after a crash or quit. */
+    public void rejoinMatch(MinecraftClient client) {
+        JsonObject current = match;
+        if (current == null || client.world != null) return;
+        String level = findRaceLevel(client, string(current, "id", ""));
+        if (level == null) {
+            notice = "Couldn't find your race world \u2014 forfeit to free your opponent.";
+            return;
+        }
+        worldRequested = true;
+        readySent = true;
+        resultShown = false;
+        forfeitSent = false;
+        sentProgress = "waiting";
+        notice = "";
+        client.startIntegratedServer(level);
+    }
+
+    private String findRaceLevel(MinecraftClient client, String id) {
+        String tag = id.length() >= 8 ? id.substring(0, 8) : id;
+        try {
+            for (LevelSummary summary : client.getLevelStorage().getLevelList()) {
+                String display = summary.getDisplayName();
+                if (display != null && display.contains(tag)) return summary.getName();
+            }
+        } catch (Exception ignored) {
+            // No accessible saves — the player can forfeit instead.
+        }
+        return null;
+    }
+
     public void finishRace() {
         JsonObject current = match;
         if (current == null || !raceStarted || "finished".equals(string(current, "status", ""))) return;
@@ -197,6 +229,13 @@ public final class RankedController {
     public String playerId() { return config == null ? "" : config.playerId; }
     public int playersOnline() { return playersOnline; }
     public int playersQueued() { return playersQueued; }
+    public int season() { return season; }
+
+    /** True when a running match exists but we're not in its world (crash/quit) — offer a rejoin. */
+    public boolean canRejoin() {
+        JsonObject current = match;
+        return current != null && "running".equals(string(current, "status", ""));
+    }
     public JsonObject selfSplits() { return object(self(), "splits"); }
     public JsonObject opponentSplits() { return object(opponent(), "splits"); }
 
@@ -340,6 +379,7 @@ public final class RankedController {
         queuedAt = number(response, "joinedAt", queuedAt);
         playersOnline = (int) number(response, "online", playersOnline);
         playersQueued = (int) number(response, "queued", playersQueued);
+        season = (int) number(response, "season", season);
         JsonObject found = object(response, "match");
         if (found != null) {
             match = found;

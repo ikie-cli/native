@@ -70,7 +70,7 @@ public final class ProfileScreen extends Screen {
         int winPct = races == 0 ? 0 : Math.round(wins * 100F / races);
 
         NativeDraw.displayText(matrices, textRenderer, NativeDraw.ellipsis(textRenderer, name, right - left - 120), left, 38, NativeTheme.TEXT);
-        NativeDraw.text(matrices, textRenderer, rankName(rating).toUpperCase() + "  \u00b7  " + rating + " RATING", left, 66, NativeTheme.MUTED);
+        NativeDraw.text(matrices, textRenderer, Ranks.name(rating).toUpperCase() + "  \u00b7  " + rating + " RATING", left, 66, NativeTheme.MUTED);
 
         String tag = verified ? "PREMIUM" : "OFFLINE";
         int tagW = NativeDraw.width(textRenderer, tag) + 16;
@@ -133,15 +133,6 @@ public final class ProfileScreen extends Screen {
     private static String clock(long ms) {
         long totalSeconds = ms / 1000;
         return String.format("%d:%02d.%03d", totalSeconds / 60, totalSeconds % 60, ms % 1000);
-    }
-
-    private static String rankName(int rating) {
-        if (rating >= 1800) return "Native Master";
-        if (rating >= 1500) return "Diamond";
-        if (rating >= 1250) return "Platinum";
-        if (rating >= 1050) return "Gold";
-        if (rating >= 850) return "Silver";
-        return "Bronze";
     }
 
     @Override

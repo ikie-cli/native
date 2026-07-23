@@ -81,7 +81,7 @@ export class RankedService {
     const candidates = [
       join(process.resourcesPath, MOD_FILE),
       join(process.cwd(), 'resources', MOD_FILE),
-      join(process.cwd(), 'native-ranked-mod', 'build', 'libs', 'native-ranked-0.5.0.jar')
+      join(process.cwd(), 'native-ranked-mod', 'build', 'libs', 'native-ranked-0.6.0.jar')
     ]
     let copied = false
     for (const candidate of candidates) {
