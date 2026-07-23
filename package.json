@@ -2,7 +2,7 @@
   "name": "native-launcher",
   "productName": "Native",
   "desktopName": "Native.desktop",
-  "version": "3.5.1",
+  "version": "3.6.0",
   "description": "Native — a fast, beautiful Minecraft launcher",
   "main": "./out/main/index.js",
   "author": {
