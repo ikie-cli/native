@@ -104,10 +104,7 @@ export const IPC = {
     onChanged: 'servers:changed'
   },
   ranked: {
-    status: 'ranked:status',
-    provision: 'ranked:provision',
-    launch: 'ranked:launch',
-    profile: 'ranked:profile'
+    install: 'ranked:install'
   },
   news: {
     fetch: 'news:fetch'

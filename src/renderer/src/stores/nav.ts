@@ -9,7 +9,6 @@ export type Route =
   | { name: 'discover'; instanceId?: string; contentType?: ProjectType }
   | { name: 'instance'; id: string; tab: InstanceTab }
   | { name: 'servers' }
-  | { name: 'ranked' }
 
 interface NavState {
   route: Route

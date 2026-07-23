@@ -52,9 +52,17 @@ public final class RankedController {
     private RankedController() {}
 
     public void bootstrap(MinecraftClient client) {
-        config = NativeConfig.load(client.runDirectory.toPath());
+        config = NativeConfig.load();
         api = new RankedApi(config);
-        if (config.isReady()) refreshAll();
+        network.execute(() -> {
+            if (!config.isReady()) NativeAuth.authenticate(client, config, api);
+            if (config.isReady()) {
+                refreshAll();
+            } else {
+                online = false;
+                error = "Sign in to Minecraft to use Native Ranked";
+            }
+        });
     }
 
     public void tick(MinecraftClient client) {
@@ -111,6 +119,10 @@ public final class RankedController {
 
     public void join(String mode) {
         if (!config.isReady() || busy) return;
+        if ("ranked".equals(mode) && !config.verified) {
+            notice = "Ranked is for premium accounts \u2014 play casual instead.";
+            return;
+        }
         busy = true;
         notice = "";
         JsonObject payload = new JsonObject();
@@ -172,6 +184,19 @@ public final class RankedController {
     }
 
     public boolean configured() { return config != null && config.isReady(); }
+    public boolean verified() { return config != null && config.verified; }
+    public String playerId() { return config == null ? "" : config.playerId; }
+
+    /** Fetch a GET endpoint off-thread; the callback receives the parsed body, or null on failure. */
+    public void fetchAsync(String path, java.util.function.Consumer<JsonObject> callback) {
+        network.execute(() -> {
+            try {
+                callback.accept(api.get(path));
+            } catch (Exception exception) {
+                callback.accept(null);
+            }
+        });
+    }
     public boolean online() { return online; }
     public boolean busy() { return busy; }
     public String error() { return error; }

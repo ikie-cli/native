@@ -7,7 +7,12 @@ let app
 let base
 
 before(async () => {
-  app = createRankedServer()
+  // Mock Mojang session verification: any account with a serverId "owns" itself,
+  // except the reserved "Unowned" name (simulates a failed/premium-less check).
+  app = createRankedServer({
+    hasJoined: async (username, serverId) =>
+      username === 'Unowned' || !serverId ? null : { id: `uuid-${username}`, name: username }
+  })
   app.server.listen(0, '127.0.0.1')
   await once(app.server, 'listening')
   base = `http://127.0.0.1:${app.server.address().port}`
@@ -25,10 +30,21 @@ async function request(path, init = {}, token = null) {
   return { status: response.status, body: await response.json() }
 }
 
-async function player(profileId, username, deviceId) {
+/** Offline account (device-id register) — unverified, casual only. */
+async function offline(profileId, username, deviceId) {
   const res = await request('/v1/auth/register', {
     method: 'POST',
     body: JSON.stringify({ profileId, username, deviceId })
+  })
+  assert.equal(res.status, 201)
+  return res.body
+}
+
+/** Premium account (Mojang-verified) — may play ranked. */
+async function verified(username) {
+  const res = await request('/v1/auth/verify', {
+    method: 'POST',
+    body: JSON.stringify({ username, serverId: `sid-${username}` })
   })
   assert.equal(res.status, 201)
   return res.body
@@ -39,9 +55,10 @@ test('health and unauthenticated leaderboard are public', async () => {
   assert.deepEqual((await request('/v1/leaderboard')).body.players, [])
 })
 
-test('matches two offline profiles on the same seed and applies Elo', async () => {
-  const a = await player('offline-a', 'RunnerOne', 'a'.repeat(32))
-  const b = await player('offline-b', 'RunnerTwo', 'b'.repeat(32))
+test('matches two verified players on the same seed and applies Elo', async () => {
+  const a = await verified('RunnerOne')
+  const b = await verified('RunnerTwo')
+  assert.equal(a.player.verified, true)
   const qa = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, a.token)
   assert.equal(qa.body.state, 'queued')
   const qb = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, b.token)
@@ -80,9 +97,31 @@ test('rejects bad identities and tokens', async () => {
   assert.equal(bad.status, 400)
 })
 
+test('ranked is premium-only; offline players get casual only', async () => {
+  const off = await offline('off-x', 'OfflineX', 'f'.repeat(32))
+  assert.equal(off.player.verified, false)
+  const ranked = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, off.token)
+  assert.equal(ranked.status, 403)
+  const casual = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'casual' }) }, off.token)
+  assert.equal(casual.status, 200)
+  assert.equal(casual.body.state, 'queued')
+  await request('/v1/queue', { method: 'DELETE' }, off.token)
+})
+
+test('premium verification issues a verified token; unowned accounts fail', async () => {
+  const v = await verified('PremiumOne')
+  assert.equal(v.player.verified, true)
+  const q = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, v.token)
+  assert.equal(q.status, 200)
+  assert.equal(q.body.state, 'queued')
+  await request('/v1/queue', { method: 'DELETE' }, v.token)
+  const fail = await request('/v1/auth/verify', { method: 'POST', body: JSON.stringify({ username: 'Unowned', serverId: 's' }) })
+  assert.equal(fail.status, 401)
+})
+
 test('rejects implausible finishes (anti-cheat)', async () => {
-  const a = await player('cheat-a', 'CheatOne', 'c'.repeat(32))
-  const b = await player('cheat-b', 'CheatTwo', 'd'.repeat(32))
+  const a = await verified('CheatOne')
+  const b = await verified('CheatTwo')
   await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, a.token)
   const qb = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, b.token)
   const match = qb.body.match
@@ -105,7 +144,7 @@ test('rejects implausible finishes (anti-cheat)', async () => {
 })
 
 test('public player profile is served without auth', async () => {
-  const p = await player('pub-a', 'PublicOne', 'e'.repeat(32))
+  const p = await verified('PublicOne')
   const res = await request(`/v1/players/${p.player.id}`)
   assert.equal(res.status, 200)
   assert.equal(res.body.player.username, 'PublicOne')

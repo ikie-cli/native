@@ -33,9 +33,24 @@ function bearer(req) {
   return value.startsWith('Bearer ') ? value.slice(7) : ''
 }
 
+async function mojangHasJoined(username, serverId) {
+  try {
+    const res = await fetch(
+      `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=${encodeURIComponent(username)}&serverId=${encodeURIComponent(serverId)}`,
+      { signal: AbortSignal.timeout(8000) }
+    )
+    if (res.status !== 200) return null
+    const data = await res.json()
+    return data && data.id ? { id: data.id, name: data.name } : null
+  } catch {
+    return null
+  }
+}
+
 export function createRankedServer(options = {}) {
   const store = options.store ?? new RankedStore(options.dbFile)
   const artifacts = options.artifactDir ?? null
+  const hasJoined = options.hasJoined ?? mojangHasJoined
   const requests = new Map()
   const server = createServer(async (req, res) => {
     if (req.method === 'OPTIONS') return json(res, 204, {})
@@ -54,6 +69,12 @@ export function createRankedServer(options = {}) {
       if (req.method === 'POST' && url.pathname === '/v1/auth/register') {
         const input = await body(req)
         return json(res, 201, store.register(String(input.profileId ?? ''), String(input.username ?? ''), String(input.deviceId ?? '')))
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/auth/verify') {
+        const input = await body(req)
+        const verified = await hasJoined(String(input.username ?? ''), String(input.serverId ?? ''))
+        if (!verified) return json(res, 401, { error: 'Session verification failed' })
+        return json(res, 201, store.verifySession(verified.id, verified.name))
       }
       if (req.method === 'GET' && url.pathname === '/v1/leaderboard') {
         return json(res, 200, { players: store.leaderboard(Number(url.searchParams.get('limit') ?? 50)) })
@@ -106,7 +127,10 @@ export function createRankedServer(options = {}) {
       return json(res, 404, { error: 'Not found' })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Request failed'
-      const status = message.includes('not found') ? 404 : message.includes('Invalid') || message.includes('must') || message.includes('large') ? 400 : 500
+      const status = message.includes('not found') ? 404
+        : message.includes('premium') ? 403
+        : message.includes('Invalid') || message.includes('must') || message.includes('large') ? 400
+        : 500
       return json(res, status, { error: message })
     }
   })

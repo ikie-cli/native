@@ -83,7 +83,7 @@ export function buildServices(): Services {
   })
   const updater = new UpdaterService()
   const discord = new DiscordRpc()
-  const ranked = new RankedService(instances, accounts)
+  const ranked = new RankedService(instances)
   return { settings, accounts, instances, launcher, updater, discord, ranked, javaConfirm }
 }
 
@@ -401,20 +401,9 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   })
 
   // ---------- Native Ranked ----------
-  ipcMain.handle(IPC.ranked.status, () => ranked.status())
-  ipcMain.handle(IPC.ranked.provision, () => ranked.provision())
-  ipcMain.handle(IPC.ranked.profile, (_e, playerId: string) => ranked.profile(playerId))
-  ipcMain.handle(IPC.ranked.launch, async () => {
-    const inst = await ranked.prepareLaunch()
-    const game = await launcher.launch(inst, {
-      javaOverride: settings.get().javaPathOverride,
-      server: null
-    })
-    const behavior = settings.get().launchBehavior
-    if (behavior === 'minimize') win.minimize()
-    else if (behavior === 'close') win.hide()
-    return game
-  })
+  // The launcher only installs the standalone mod into a managed 1.16.1 Fabric
+  // instance; matchmaking, auth, leaderboard, and profiles live in the mod.
+  ipcMain.handle(IPC.ranked.install, () => ranked.install())
 
   // ---------- news ----------
   ipcMain.handle(IPC.news.fetch, () => fetchNews())
