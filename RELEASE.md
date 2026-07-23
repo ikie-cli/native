@@ -16,10 +16,6 @@ build + Electron-ABI rebuild → Playwright E2E → visual QA → package.
       quick launch), settings (Java detect/download/override, defaults, launch behavior,
       4 themes, language scaffold), launch flow (validation, live console, crash report
       capture, playtime), auto-updates.
-- [x] **Native Ranked is end-to-end** — the launcher provisions a managed 1.16.1 Fabric
-      instance and Native identity, the deployed SQLite coordinator matches two players on
-      one seed and synchronized timestamp, and the custom-rendered in-game UI handles world
-      creation, countdown, HUD milestones, dragon-kill results, Elo, and leaderboard data.
 - [x] **Auto-updater tested end-to-end** — `e2e/updater.spec.ts` runs the app against a
       local generic-provider feed: detects v99.9.9 → background-downloads with progress →
       "restart to apply". The install step itself was empirically verified:

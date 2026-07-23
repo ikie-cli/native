@@ -316,51 +316,13 @@ export async function startE2EFixture(opts: { sleepClient?: boolean } = {}): Pro
     ]
   })
 
-  // ---- Native Ranked public status ----
-  json(fx, '/ranked/health', {
-    ok: true,
-    service: 'native-ranked',
-    version: '0.1.0',
-    players: 12,
-    queued: 2,
-    activeMatches: 1,
-    completedMatches: 48
-  })
-  json(fx, '/ranked/v1/leaderboard?limit=10', {
-    players: [
-      { id: 'r1', username: 'Feinberg', rating: 1842, wins: 37, losses: 9, races: 46 },
-      { id: 'r2', username: 'Couriway', rating: 1768, wins: 29, losses: 11, races: 40 },
-      { id: 'r3', username: 'Fruitberries', rating: 1694, wins: 25, losses: 13, races: 38 },
-      { id: 'r4', username: 'Ninjabrain', rating: 1581, wins: 19, losses: 12, races: 31 }
-    ]
-  })
-  json(fx, '/ranked/v1/auth/register', {
-    token: 'e2e-ranked-token',
-    player: { id: 'ranked-test-player', username: 'TestPlayer', rating: 1000, wins: 0, losses: 0, races: 0 }
-  })
-  json(fx, '/ranked/v1/profile', {
-    player: { id: 'ranked-test-player', username: 'TestPlayer', rating: 1004, wins: 1, losses: 1, races: 2 },
-    history: [
-      { id: 'm1', mode: 'ranked', seed: '482016', createdAt: Date.now() - 3_600_000, finishedAt: Date.now() - 3_400_000, winnerId: 'ranked-test-player', finishMs: 512_000, ratingDelta: 18, opponent: 'Couriway' },
-      { id: 'm2', mode: 'ranked', seed: '119837', createdAt: Date.now() - 86_400_000, finishedAt: Date.now() - 86_100_000, winnerId: 'r1', finishMs: 604_000, ratingDelta: -14, opponent: 'Feinberg' }
-    ]
-  })
-  json(fx, '/ranked/v1/players/r1', {
-    player: { id: 'r1', username: 'Feinberg', rating: 1842, wins: 37, losses: 9, races: 46 },
-    history: [
-      { id: 'h1', mode: 'ranked', seed: '771', createdAt: Date.now() - 7_200_000, finishedAt: Date.now() - 7_000_000, winnerId: 'r1', finishMs: 486_000, ratingDelta: 12, opponent: 'Fruitberries' },
-      { id: 'h2', mode: 'ranked', seed: '552', createdAt: Date.now() - 90_000_000, finishedAt: Date.now() - 89_800_000, winnerId: 'r1', finishMs: 505_000, ratingDelta: 15, opponent: 'Ninjabrain' }
-    ]
-  })
-
   const env: Record<string, string> = {
     NATIVE_URL_VERSION_MANIFEST: `${fx.baseUrl}/manifest.json`,
     NATIVE_URL_RESOURCES: `${fx.baseUrl}/resources`,
     NATIVE_URL_FABRIC_META: fx.baseUrl,
     NATIVE_URL_MODRINTH: fx.baseUrl,
     NATIVE_URL_CURSEFORGE: fx.baseUrl,
-    NATIVE_URL_LAUNCHER_CONTENT: fx.baseUrl,
-    NATIVE_URL_RANKED: `${fx.baseUrl}/ranked`
+    NATIVE_URL_LAUNCHER_CONTENT: fx.baseUrl
   }
   return { fx, env, close: () => fx.close() }
 }

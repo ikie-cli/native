@@ -25,9 +25,6 @@ designed against a pixel-sampled dark design system (see [`design-system.md`](de
 - **Servers** — automatically detected from Minecraft connection logs with per-server
   playtime, visit count, last-played history, and preferred instance. Includes live Server
   List Ping (MOTD, players, latency, favicon) and quick join.
-- **Native Ranked** — one-click 1.16.1 Fabric speedrun races with Native identity for both
-  Microsoft and offline profiles, same-seed world creation, synchronized starts, a custom
-  in-game interface and HUD, live milestones, Elo ratings, results, and a leaderboard.
 - **Discord Rich Presence** — shows the current instance, Minecraft version, loader, and
   session time; reconnects automatically when Discord starts or restarts.
 - **Launch flow** — pre-launch validation (Java, files, disk), live log console with level
@@ -59,8 +56,6 @@ npm ci
 npm run dev            # electron-vite dev server + HMR
 
 npm run typecheck
-npm run test:ranked     # matchmaking service integration tests
-npm run build:ranked    # compile and stage the 1.16.1 Fabric client
 npm run rebuild:node   # better-sqlite3 → Node ABI (for vitest)
 npx vitest run         # unit + integration + renderer store tests
 

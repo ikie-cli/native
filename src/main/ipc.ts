@@ -25,7 +25,6 @@ import { IconsService } from './services/icons'
 import { fetchNews } from './services/news'
 import { UpdaterService } from './services/updater'
 import { DiscordRpc } from './services/discord'
-import { RankedService } from './services/ranked'
 import { LaunchManager } from './core/launch'
 import { DownloadManager } from './core/download'
 import { getManifest } from './core/manifest'
@@ -44,7 +43,6 @@ export interface Services {
   launcher: LaunchManager
   updater: UpdaterService
   discord: DiscordRpc
-  ranked: RankedService
   /** Swapped for a renderer-backed dialog in registerIpc; auto-approves headless. */
   javaConfirm: { handler: (req: Omit<JavaDownloadRequest, 'requestId'>) => Promise<boolean> }
 }
@@ -83,13 +81,12 @@ export function buildServices(): Services {
   })
   const updater = new UpdaterService()
   const discord = new DiscordRpc()
-  const ranked = new RankedService(instances)
-  return { settings, accounts, instances, launcher, updater, discord, ranked, javaConfirm }
+  return { settings, accounts, instances, launcher, updater, discord, javaConfirm }
 }
 
 export function registerIpc(win: BrowserWindow, services: Services): void {
   const db = openDb()
-  const { settings, accounts, instances, launcher, updater, discord, ranked } = services
+  const { settings, accounts, instances, launcher, updater, discord } = services
   const content = new ContentService(db, () => CURSEFORGE_API_KEY)
   const servers = new ServersService(db)
   const icons = new IconsService()
@@ -399,11 +396,6 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
       log.warn(`Could not finish multiplayer session: ${(err as Error).message}`)
     }
   })
-
-  // ---------- Native Ranked ----------
-  // The launcher only installs the standalone mod into a managed 1.16.1 Fabric
-  // instance; matchmaking, auth, leaderboard, and profiles live in the mod.
-  ipcMain.handle(IPC.ranked.install, () => ranked.install())
 
   // ---------- news ----------
   ipcMain.handle(IPC.news.fetch, () => fetchNews())
