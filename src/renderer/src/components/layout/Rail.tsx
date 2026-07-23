@@ -1,4 +1,4 @@
-import { Compass, Home, Library, LogIn, Plus, Server, Settings, Swords } from 'lucide-react'
+import { Compass, Home, Library, LogIn, Plus, Server, Settings } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
@@ -75,7 +75,6 @@ export function Rail(): React.JSX.Element {
       />
       <RailButton icon={Library} label="Library" tour="library" active={is('library')} onClick={() => go({ name: 'library' })} />
       <RailButton icon={Server} label="Servers" tour="servers" active={is('servers')} onClick={() => go({ name: 'servers' })} />
-      <RailButton icon={Swords} label="Native Ranked" active={is('ranked')} onClick={() => go({ name: 'ranked' })} />
 
       <div className="my-1 h-px w-8 bg-line-subtle" />
 

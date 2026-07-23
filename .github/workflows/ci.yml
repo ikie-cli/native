@@ -266,6 +266,7 @@ jobs:
             dist/*.zip
             dist/*.blockmap
             dist/*.yml
+            resources/native-ranked.jar
           fail_on_unmatched_files: true
           generate_release_notes: true
 

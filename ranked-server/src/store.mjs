@@ -12,6 +12,7 @@ function publicPlayer(row) {
   return {
     id: row.id,
     username: row.username,
+    verified: Boolean(row.verified),
     rating: row.rating,
     wins: row.wins,
     losses: row.losses,
@@ -64,6 +65,11 @@ export class RankedStore {
       CREATE INDEX IF NOT EXISTS idx_matches_created ON matches(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_match_players_player ON match_players(player_id, match_id);
     `)
+    // Migration: premium-verified flag for existing databases.
+    const cols = this.db.prepare('PRAGMA table_info(players)').all().map((c) => c.name)
+    if (!cols.includes('verified')) {
+      this.db.exec('ALTER TABLE players ADD COLUMN verified INTEGER NOT NULL DEFAULT 0')
+    }
   }
 
   close() {
@@ -103,6 +109,27 @@ export class RankedStore {
     return { token, player: publicPlayer(row) }
   }
 
+  /** Issue a verified token for a Mojang-authenticated (premium) player, keyed by real UUID. */
+  verifySession(uuid, username) {
+    if (!/^[a-zA-Z0-9-]{8,64}$/.test(String(uuid))) throw new Error('Invalid session profile')
+    if (!/^[a-zA-Z0-9_]{2,16}$/.test(username)) throw new Error('Username must be 2-16 letters, numbers, or underscores')
+    const profileKey = `mojang:${uuid}`
+    const now = Date.now()
+    const token = randomBytes(32).toString('hex')
+    const existing = this.db.prepare('SELECT * FROM players WHERE profile_key = ?').get(profileKey)
+    if (existing) {
+      this.db.prepare('UPDATE players SET username = ?, token_hash = ?, verified = 1, last_seen_at = ? WHERE id = ?')
+        .run(username, hashToken(token), now, existing.id)
+    } else {
+      this.db.prepare(`
+        INSERT INTO players (id, profile_key, username, token_hash, verified, created_at, last_seen_at)
+        VALUES (?, ?, ?, ?, 1, ?, ?)
+      `).run(randomUUID(), profileKey, username, hashToken(token), now, now)
+    }
+    const row = this.db.prepare('SELECT * FROM players WHERE profile_key = ?').get(profileKey)
+    return { token, player: publicPlayer(row) }
+  }
+
   authenticate(token) {
     if (!token) return null
     const row = this.db.prepare('SELECT * FROM players WHERE token_hash = ?').get(hashToken(token))
@@ -118,6 +145,10 @@ export class RankedStore {
 
   joinQueue(playerId, mode) {
     if (!['ranked', 'casual'].includes(mode)) throw new Error('Invalid queue mode')
+    if (mode === 'ranked') {
+      const row = this.db.prepare('SELECT verified FROM players WHERE id = ?').get(playerId)
+      if (!row || !row.verified) throw new Error('Ranked is for verified premium accounts only')
+    }
     this.expire()
     const active = this.activeMatch(playerId)
     if (active) return { state: 'matched', match: active }

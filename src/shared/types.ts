@@ -169,48 +169,10 @@ export interface ServerStatus {
   error?: string
 }
 
-export interface RankedPlayer {
-  id: string
-  username: string
-  rating: number
-  wins: number
-  losses: number
-  races: number
-}
-
-export interface RankedStatus {
-  configured: boolean
-  online: boolean
-  instance: InstanceConfig | null
-  player: RankedPlayer | null
-  leaderboard: RankedPlayer[]
-  history: RankedMatchSummary[]
-  service: {
-    players: number
-    queued: number
-    activeMatches: number
-    completedMatches: number
-  } | null
-  error?: string
-}
-
-/** One finished race in a player's history. */
-export interface RankedMatchSummary {
-  id: string
-  mode: string
-  seed: string
-  createdAt: number
-  finishedAt: number | null
-  winnerId: string | null
-  finishMs: number | null
-  ratingDelta: number
-  opponent: string
-}
-
-/** Public profile: a player plus their recent finished races. */
-export interface RankedProfile {
-  player: RankedPlayer
-  history: RankedMatchSummary[]
+/** Result of installing the standalone Native Ranked mod into a managed instance. */
+export interface RankedInstallResult {
+  instanceId: string
+  name: string
 }
 
 /** Full project page data for the mod detail view. */

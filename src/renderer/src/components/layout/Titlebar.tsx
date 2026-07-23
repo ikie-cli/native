@@ -29,8 +29,6 @@ function crumbsFor(route: Route, instName: (id: string) => string): string[] {
     }
     case 'servers':
       return ['Servers']
-    case 'ranked':
-      return ['Native Ranked']
   }
 }
 

@@ -8,7 +8,8 @@ import {
   Play,
   Plus,
   Server,
-  Square
+  Square,
+  Swords
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { InstanceConfig, SearchHit, ServerEntry } from '@shared/types'
@@ -359,6 +360,54 @@ function RecentServers({ servers }: { servers: ServerEntry[] }): React.JSX.Eleme
   )
 }
 
+function NativeRankedCard(): React.JSX.Element {
+  const push = useToasts((s) => s.push)
+  const { go } = useNav()
+  const refresh = useInstances((s) => s.refresh)
+  const [installing, setInstalling] = useState(false)
+
+  const install = (): void => {
+    setInstalling(true)
+    window.native.ranked
+      .install()
+      .then(async (res) => {
+        await refresh()
+        push({
+          kind: 'success',
+          title: 'Native Ranked installed',
+          detail: `Launch “${res.name}” and sign in to play — premium accounts unlock ranked, offline accounts can practice casually.`
+        })
+        go({ name: 'instance', id: res.instanceId, tab: 'content' })
+      })
+      .catch((err) => toastError(err, 'Could not install Native Ranked'))
+      .finally(() => setInstalling(false))
+  }
+
+  return (
+    <section className="mt-8" data-testid="native-ranked">
+      <div className="mb-1 text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">Compete</div>
+      <div className="flex items-center gap-4 rounded-card border border-line-subtle bg-surface-raised p-5">
+        <div
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md2 text-white"
+          style={{ background: 'linear-gradient(135deg, #ff496e, #8f1d3a)' }}
+        >
+          <Swords size={26} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-h3 font-bold text-content-primary">Native Ranked</div>
+          <div className="mt-0.5 text-small text-content-secondary">
+            1v1 same-seed speedrun races — Elo ratings, a live leaderboard, and profiles, all in a
+            standalone 1.16.1 Fabric mod. Premium accounts play ranked; offline accounts practice casually.
+          </div>
+        </div>
+        <Button icon={Swords} onClick={install} disabled={installing} data-testid="ranked-install">
+          {installing ? 'Installing…' : 'Install'}
+        </Button>
+      </div>
+    </section>
+  )
+}
+
 export function HomeScreen(): React.JSX.Element {
   const { instances, loaded } = useInstances()
   const servers = useServers((s) => s.servers)
@@ -394,6 +443,8 @@ export function HomeScreen(): React.JSX.Element {
           <JumpBackRow key={inst.id} inst={inst} />
         ))}
       </div>
+
+      <NativeRankedCard />
 
       <BestModpacks />
       <RecentServers servers={servers} />

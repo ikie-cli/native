@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { access, readFile, readdir } from 'node:fs/promises'
+import { access, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { defaultSeed, launchApp, type LaunchedApp } from './helpers/app'
 import { startE2EFixture, type E2EFixture } from './helpers/fixture'
@@ -19,28 +19,29 @@ test.afterAll(async () => {
   await fixture.close()
 })
 
-test('provisions the managed ranked instance for an offline profile', async () => {
+test('one-click installs the standalone Native Ranked mod into a managed instance', async () => {
   launched = await launchApp({ env: fixture.env, seed: defaultSeed() })
   const { page, dataDir } = launched
-  await page.getByLabel('Native Ranked').click()
-  await expect(page.getByTestId('ranked-screen')).toBeVisible()
-  await expect(page.getByText('Feinberg')).toBeVisible()
-  await page.getByTestId('ranked-primary-action').click()
-  await expect(page.getByTestId('ranked-primary-action')).toContainText('Launch ranked', {
-    timeout: 15_000
-  })
-  await expect(page.getByTestId('ranked-screen').getByText('TestPlayer', { exact: true })).toBeVisible()
+
+  // The Home screen surfaces the Native Ranked install card.
+  await expect(page.getByTestId('native-ranked')).toBeVisible()
+  await page.getByTestId('ranked-install').click()
+
+  // Install provisions a 1.16.1 Fabric instance and drops the bundled jar in.
+  await expect
+    .poll(
+      async () => {
+        const ids = await readdir(join(dataDir, 'instances'))
+        return ids.some((id) => !id.startsWith('seed-'))
+      },
+      { timeout: 20_000 }
+    )
+    .toBe(true)
 
   const ids = await readdir(join(dataDir, 'instances'))
   const rankedId = ids.find((id) => !id.startsWith('seed-'))
   expect(rankedId).toBeTruthy()
-  const gameDir = join(dataDir, 'instances', rankedId!, 'minecraft')
-  const config = JSON.parse(await readFile(join(gameDir, 'native-ranked.json'), 'utf8'))
-  expect(config).toMatchObject({
-    endpoint: `${fixture.fx.baseUrl}/ranked`,
-    token: 'e2e-ranked-token',
-    playerId: 'ranked-test-player',
-    username: 'TestPlayer'
-  })
-  await access(join(gameDir, 'mods', 'native-ranked.jar'))
+  // The standalone mod jar is present; the mod self-authenticates in-game
+  // (no launcher-written token/config file anymore).
+  await access(join(dataDir, 'instances', rankedId!, 'minecraft', 'mods', 'native-ranked.jar'))
 })

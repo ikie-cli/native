@@ -1,8 +1,5 @@
 package xyz.nativelauncher.ranked.ui;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.RotatingCubeMapRenderer;
@@ -15,11 +12,14 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import xyz.nativelauncher.ranked.RankedController;
 
+import java.util.Locale;
+
 /**
- * Vanilla-styled title screen for the Native Ranked client: the real Minecraft
- * panorama background, stock {@link ButtonWidget}s stacked on the left, and the
- * real Native logo image on the right. All click/hover/sound handling is left to
- * the vanilla widget system.
+ * Vanilla-styled home screen for the standalone Native Ranked client: the real
+ * Minecraft panorama, stock {@link ButtonWidget}s on the left (play + navigation),
+ * and the Native logo with a compact profile card on the right. The leaderboard
+ * and full profile live on their own screens ({@link LeaderboardScreen},
+ * {@link ProfileScreen}).
  */
 public final class NativeRankedScreen extends Screen {
     private static final Identifier PANORAMA_OVERLAY =
@@ -32,6 +32,8 @@ public final class NativeRankedScreen extends Screen {
     private ButtonWidget rankedButton;
     private ButtonWidget casualButton;
     private ButtonWidget cancelButton;
+    private ButtonWidget leaderboardButton;
+    private ButtonWidget profileButton;
     private float fade;
 
     public NativeRankedScreen() {
@@ -42,7 +44,7 @@ public final class NativeRankedScreen extends Screen {
     protected void init() {
         int left = leftMargin();
         int buttonWidth = buttonWidth();
-        int baseY = height - 88;
+        int baseY = height - 104;
 
         rankedButton = addButton(new ButtonWidget(left, baseY, buttonWidth, 20,
             new LiteralText("Find Ranked Match"), button -> controller.join("ranked")));
@@ -50,6 +52,12 @@ public final class NativeRankedScreen extends Screen {
             new LiteralText("Practice (Casual)"), button -> controller.join("casual")));
         cancelButton = addButton(new ButtonWidget(left, baseY, buttonWidth, 20,
             new LiteralText("Cancel Search"), button -> controller.leaveQueue()));
+
+        int half = (buttonWidth - 6) / 2;
+        leaderboardButton = addButton(new ButtonWidget(left, baseY + 48, half, 20,
+            new LiteralText("Leaderboard"), button -> client.openScreen(new LeaderboardScreen(this))));
+        profileButton = addButton(new ButtonWidget(left + buttonWidth - half, baseY + 48, half, 20,
+            new LiteralText("My Profile"), button -> client.openScreen(new ProfileScreen(this, controller.playerId()))));
 
         updateButtons();
     }
@@ -64,9 +72,13 @@ public final class NativeRankedScreen extends Screen {
         casualButton.visible = !queued;
         cancelButton.visible = queued;
 
-        rankedButton.active = ready;
+        // Ranked is premium-only; offline accounts are limited to casual.
+        rankedButton.active = ready && controller.verified();
         casualButton.active = ready;
         cancelButton.active = !controller.busy();
+
+        leaderboardButton.active = true;
+        profileButton.active = controller.configured();
     }
 
     @Override
@@ -80,7 +92,6 @@ public final class NativeRankedScreen extends Screen {
         renderPanorama(matrices, delta);
         renderActionsColumn(matrices);
         renderBrandColumn(matrices);
-        // Vanilla widget system draws (and later handles) the stock buttons.
         super.render(matrices, mouseX, mouseY, delta);
     }
 
@@ -96,8 +107,7 @@ public final class NativeRankedScreen extends Screen {
         RenderSystem.color4f(1F, 1F, 1F, 1F);
         drawTexture(matrices, 0, 0, this.width, this.height, 0.0F, 0.0F, 16, 128, 16, 128);
         RenderSystem.disableBlend();
-        // A gentle bottom-up scrim keeps the left-hand buttons and status legible.
-        fillGradient(matrices, 0, height - 150, width, height, 0x00000000, 0x88000000);
+        fillGradient(matrices, 0, height - 168, width, height, 0x00000000, 0x99000000);
     }
 
     // ----- left column: status + vanilla buttons ---------------------------
@@ -105,7 +115,7 @@ public final class NativeRankedScreen extends Screen {
     private void renderActionsColumn(MatrixStack matrices) {
         int left = leftMargin();
         boolean queued = "queued".equals(controller.queueState());
-        int titleY = rankedButton != null ? rankedButton.y - 34 : height - 122;
+        int titleY = rankedButton != null ? rankedButton.y - 34 : height - 138;
 
         String title = queued ? "MATCHMAKING" : "PLAY NATIVE RANKED";
         textRenderer.drawWithShadow(matrices, title, left, titleY, NativeTheme.TEXT);
@@ -113,24 +123,26 @@ public final class NativeRankedScreen extends Screen {
         String status;
         int statusColor = NativeTheme.MUTED;
         if (!controller.configured()) {
-            status = "Open this client from the Native Launcher";
-            statusColor = NativeTheme.RED;
+            status = controller.error().isEmpty() ? "Signing in with your Minecraft account\u2026" : trim(controller.error(), buttonWidth() + 40);
+            statusColor = controller.error().isEmpty() ? NativeTheme.MUTED : NativeTheme.RED;
         } else if (!controller.error().isEmpty()) {
-            status = trim(controller.error(), buttonWidth());
+            status = trim(controller.error(), buttonWidth() + 40);
             statusColor = NativeTheme.RED;
         } else if (queued) {
             long seconds = Math.max(0, (System.currentTimeMillis() - controller.queuedAt()) / 1000);
             status = "Searching for an opponent  \u00b7  " + clock(seconds);
         } else if (!controller.notice().isEmpty()) {
-            status = trim(controller.notice(), buttonWidth());
+            status = trim(controller.notice(), buttonWidth() + 40);
             statusColor = NativeTheme.TEXT;
+        } else if (!controller.verified()) {
+            status = controller.username() + "  \u00b7  Casual only \u2014 sign in with a premium account for ranked";
         } else {
             status = controller.username() + "  \u00b7  " + controller.rating() + " \u00b7 " + rankName(controller.rating());
         }
         textRenderer.drawWithShadow(matrices, status, left, titleY + 15, statusColor);
     }
 
-    // ----- right column: real logo + profile + leaderboard ------------------
+    // ----- right column: real logo + compact profile card -------------------
 
     private void renderBrandColumn(MatrixStack matrices) {
         int rightMargin = leftMargin();
@@ -138,8 +150,8 @@ public final class NativeRankedScreen extends Screen {
         int panelX = width - rightMargin - panelWidth;
         int centerX = panelX + panelWidth / 2;
 
-        int logoSize = MathHelper.clamp(Math.min(width, height) / 4, 72, 118);
-        int logoTop = MathHelper.clamp(height / 8, 20, 54);
+        int logoSize = MathHelper.clamp(Math.min(width, height) / 4, 72, 122);
+        int logoTop = MathHelper.clamp(height / 6, 26, 76);
         int logoX = centerX - logoSize / 2;
 
         float alpha = MathHelper.clamp(fade, 0F, 1F);
@@ -150,48 +162,26 @@ public final class NativeRankedScreen extends Screen {
         drawTexture(matrices, logoX, logoTop, logoSize, logoSize, 0.0F, 0.0F, 512, 512, 512, 512);
         RenderSystem.color4f(1F, 1F, 1F, 1F);
 
-        int y = logoTop + logoSize + 8;
+        int y = logoTop + logoSize + 10;
         drawCentered(matrices, "NATIVE RANKED", centerX, y, NativeTheme.TEXT);
-        y += 18;
+        y += 20;
 
-        // Your profile
         fill(matrices, panelX, y, panelX + panelWidth, y + 1, 0x33FFFFFF);
-        y += 8;
+        y += 10;
         drawCentered(matrices, trim(controller.username(), panelWidth), centerX, y, NativeTheme.TEXT);
-        y += 12;
+        y += 13;
+        String tier = !controller.configured()
+            ? "Not signed in"
+            : (controller.verified() ? rankName(controller.rating()) : "Offline account");
+        drawCentered(matrices, tier.toUpperCase(Locale.ROOT), centerX, y, NativeTheme.MUTED);
+        y += 15;
         drawCentered(matrices,
             controller.rating() + " RATING  \u00b7  " + controller.wins() + "W " + controller.losses() + "L",
             centerX, y, NativeTheme.MUTED);
-        y += 18;
+        y += 17;
+        String tag = controller.verified() ? "\u2713 PREMIUM VERIFIED" : "OFFLINE \u00b7 CASUAL ONLY";
+        drawCentered(matrices, tag, centerX, y, controller.verified() ? NativeTheme.GREEN : NativeTheme.DIM);
 
-        // Leaderboard
-        fill(matrices, panelX, y, panelX + panelWidth, y + 1, 0x33FFFFFF);
-        y += 8;
-        drawCentered(matrices, "LEADERBOARD \u00b7 SEASON ZERO", centerX, y, NativeTheme.DIM);
-        y += 15;
-
-        JsonArray players = controller.leaderboard();
-        int maxRows = Math.max(0, Math.min(5, (height - y - 26) / 13));
-        int rows = Math.min(players.size(), maxRows);
-        for (int i = 0; i < rows; i++) {
-            JsonElement element = players.get(i);
-            if (!element.isJsonObject()) continue;
-            JsonObject player = element.getAsJsonObject();
-            String name = RankedController.string(player, "username", "Player");
-            String rating = Long.toString(RankedController.number(player, "rating", 1000));
-            boolean self = name.equals(controller.username());
-            if (self) fill(matrices, panelX - 2, y - 2, panelX + panelWidth + 2, y + 11, 0x22FFFFFF);
-            int color = self ? NativeTheme.TEXT : (i < 3 ? NativeTheme.TEXT : NativeTheme.MUTED);
-            textRenderer.drawWithShadow(matrices, String.format("%02d", i + 1), panelX, y, i < 3 ? NativeTheme.TEXT : NativeTheme.DIM);
-            textRenderer.drawWithShadow(matrices, trim(name, panelWidth - 58), panelX + 20, y, color);
-            textRenderer.drawWithShadow(matrices, rating, panelX + panelWidth - textRenderer.getWidth(rating), y, NativeTheme.TEXT);
-            y += 13;
-        }
-        if (rows == 0) {
-            drawCentered(matrices, "No completed races yet", centerX, y, NativeTheme.DIM);
-        }
-
-        // Version tag, bottom-right (service status intentionally omitted).
         String badge = "SEASON ZERO  \u00b7  BETA";
         textRenderer.drawWithShadow(matrices, badge,
             width - rightMargin - textRenderer.getWidth(badge), height - 16, NativeTheme.DIM);
