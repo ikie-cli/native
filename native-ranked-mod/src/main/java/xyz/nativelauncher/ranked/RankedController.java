@@ -3,6 +3,8 @@ package xyz.nativelauncher.ranked;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.world.CreateWorldScreen;
@@ -40,6 +42,8 @@ public final class RankedController {
     private volatile String notice = "";
     private volatile boolean online;
     private volatile boolean busy;
+    private volatile int playersOnline;
+    private volatile int playersQueued;
     private long nextPoll;
     private boolean redirected;
     private boolean worldRequested;
@@ -93,7 +97,11 @@ public final class RankedController {
         if (client.world != null && worldRequested && !readySent) {
             readySent = true;
             client.openScreen(new CountdownScreen());
-            postMatch("ready", new JsonObject());
+            JsonObject readyPayload = new JsonObject();
+            if (client.getServer() != null && client.getServer().getOverworld() != null) {
+                readyPayload.addProperty("seed", Long.toString(client.getServer().getOverworld().getSeed()));
+            }
+            postMatch("ready", readyPayload);
         }
 
         long startsAt = number(current, "startsAt", 0);
@@ -127,6 +135,7 @@ public final class RankedController {
         notice = "";
         JsonObject payload = new JsonObject();
         payload.addProperty("mode", mode);
+        payload.add("mods", loadedMods());
         submit(() -> applyQueue(api.post("/v1/queue", payload)), true);
     }
 
@@ -186,6 +195,20 @@ public final class RankedController {
     public boolean configured() { return config != null && config.isReady(); }
     public boolean verified() { return config != null && config.verified; }
     public String playerId() { return config == null ? "" : config.playerId; }
+    public int playersOnline() { return playersOnline; }
+    public int playersQueued() { return playersQueued; }
+    public JsonObject selfSplits() { return object(self(), "splits"); }
+    public JsonObject opponentSplits() { return object(opponent(), "splits"); }
+
+    private JsonArray loadedMods() {
+        JsonArray mods = new JsonArray();
+        try {
+            for (ModContainer mod : FabricLoader.getInstance().getAllMods()) mods.add(mod.getMetadata().getId());
+        } catch (Exception ignored) {
+            // Fall back to an empty list; the server treats "no report" leniently.
+        }
+        return mods;
+    }
 
     /** Fetch a GET endpoint off-thread; the callback receives the parsed body, or null on failure. */
     public void fetchAsync(String path, java.util.function.Consumer<JsonObject> callback) {
@@ -315,6 +338,8 @@ public final class RankedController {
         String previous = queueState;
         queueState = string(response, "state", "idle");
         queuedAt = number(response, "joinedAt", queuedAt);
+        playersOnline = (int) number(response, "online", playersOnline);
+        playersQueued = (int) number(response, "queued", playersQueued);
         JsonObject found = object(response, "match");
         if (found != null) {
             match = found;
