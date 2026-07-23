@@ -46,4 +46,9 @@ test('one-click installs the standalone Native Ranked mod into a managed instanc
   await access(join(dataDir, 'instances', rankedId!, 'minecraft', 'mods', 'native-ranked.jar'))
   // The custom Native Ranked instance icon is installed.
   await access(join(dataDir, 'icons', 'native-ranked-icon.png'))
+
+  // The banner ad disappears from Home once Native Ranked is installed.
+  await page.getByLabel('Home').first().click()
+  await expect(page.getByTestId('screen-home')).toBeVisible()
+  await expect(page.getByTestId('native-ranked')).toHaveCount(0)
 })
