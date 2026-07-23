@@ -103,9 +103,6 @@ export const IPC = {
     quickJoin: 'servers:quick-join',
     onChanged: 'servers:changed'
   },
-  ranked: {
-    install: 'ranked:install'
-  },
   news: {
     fetch: 'news:fetch'
   },

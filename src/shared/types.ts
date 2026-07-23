@@ -169,12 +169,6 @@ export interface ServerStatus {
   error?: string
 }
 
-/** Result of installing the standalone Native Ranked mod into a managed instance. */
-export interface RankedInstallResult {
-  instanceId: string
-  name: string
-}
-
 /** Full project page data for the mod detail view. */
 export interface ProjectDetails {
   platform: 'modrinth' | 'curseforge'

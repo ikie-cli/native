@@ -107,18 +107,6 @@ function makeNativeStub() {
       quickJoin: vi.fn(),
       onChanged: listeners()
     },
-    ranked: {
-      status: vi.fn().mockResolvedValue({
-        configured: false,
-        online: true,
-        instance: null,
-        player: null,
-        leaderboard: [],
-        service: { players: 0, queued: 0, activeMatches: 0, completedMatches: 0 }
-      }),
-      provision: vi.fn(),
-      launch: vi.fn()
-    },
     news: { fetch: vi.fn().mockResolvedValue([]) },
     java: {
       list: vi.fn().mockResolvedValue([]),

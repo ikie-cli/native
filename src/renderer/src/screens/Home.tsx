@@ -359,55 +359,6 @@ function RecentServers({ servers }: { servers: ServerEntry[] }): React.JSX.Eleme
   )
 }
 
-const RANKED_INSTANCE_MARKER = 'native-ranked:managed:v1'
-
-function NativeRankedCard(): React.JSX.Element | null {
-  const push = useToasts((s) => s.push)
-  const { go } = useNav()
-  const instances = useInstances((s) => s.instances)
-  const refresh = useInstances((s) => s.refresh)
-  const [installing, setInstalling] = useState(false)
-
-  // Once the managed Native Ranked instance exists, the ad has done its job — hide it.
-  if (instances.some((i) => i.notes?.includes(RANKED_INSTANCE_MARKER))) return null
-
-  const install = (): void => {
-    setInstalling(true)
-    window.native.ranked
-      .install()
-      .then(async (res) => {
-        await refresh()
-        push({
-          kind: 'success',
-          title: 'Native Ranked installed',
-          detail: `Launch “${res.name}” and sign in to play — premium accounts unlock ranked, offline accounts practice casually.`
-        })
-        go({ name: 'instance', id: res.instanceId, tab: 'content' })
-      })
-      .catch((err) => toastError(err, 'Could not install Native Ranked'))
-      .finally(() => setInstalling(false))
-  }
-
-  return (
-    <section className="mt-8" data-testid="native-ranked">
-      <div className="flex items-center justify-between gap-4 overflow-hidden rounded-card border border-line-subtle bg-surface-raised px-5 py-4">
-        <div className="min-w-0">
-          <div className="text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">Compete</div>
-          <div className="mt-1 truncate text-body font-bold text-content-primary">
-            Native Ranked — 1v1 same-seed speedrun races
-          </div>
-          <div className="mt-0.5 truncate text-small text-content-secondary">
-            Elo matchmaking with seasons, live splits, and a global leaderboard — a standalone 1.16.1 Fabric mod.
-          </div>
-        </div>
-        <Button onClick={install} disabled={installing} data-testid="ranked-install" className="shrink-0">
-          {installing ? 'Installing…' : 'Install'}
-        </Button>
-      </div>
-    </section>
-  )
-}
-
 export function HomeScreen(): React.JSX.Element {
   const { instances, loaded } = useInstances()
   const servers = useServers((s) => s.servers)
@@ -443,8 +394,6 @@ export function HomeScreen(): React.JSX.Element {
           <JumpBackRow key={inst.id} inst={inst} />
         ))}
       </div>
-
-      <NativeRankedCard />
 
       <BestModpacks />
       <RecentServers servers={servers} />
