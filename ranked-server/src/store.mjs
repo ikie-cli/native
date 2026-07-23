@@ -231,14 +231,26 @@ export class RankedStore {
 
   finish(matchId, playerId) {
     const match = this.db.prepare('SELECT * FROM matches WHERE id = ?').get(matchId)
-    this.assertParticipant(matchId, playerId)
+    const self = this.assertParticipant(matchId, playerId)
     if (!match || match.status !== 'running' || !match.starts_at) throw new Error('Match is not running')
     if (Date.now() < match.starts_at) throw new Error('Race has not started')
     const elapsed = Date.now() - match.starts_at
+    // Anti-cheat: no legitimate same-seed run finishes in under two minutes, and
+    // a real dragon kill requires reaching the stronghold (ender eyes) first.
+    if (elapsed < 120_000) throw new Error('Invalid finish: implausibly fast')
+    if (PROGRESS.indexOf(self.progress) < PROGRESS.indexOf('stronghold')) {
+      throw new Error('Invalid finish: stronghold not reached')
+    }
     this.db.prepare(`UPDATE match_players SET progress = 'finished', finish_ms = ? WHERE match_id = ? AND player_id = ?`)
       .run(elapsed, matchId, playerId)
     this.complete(matchId, playerId)
     return this.match(matchId, playerId)
+  }
+
+  /** Public profile + recent history for any player id (no auth needed). */
+  publicProfile(playerId) {
+    const player = this.profile(playerId)
+    return player ? { player, history: this.history(playerId) } : null
   }
 
   forfeit(matchId, playerId) {

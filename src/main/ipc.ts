@@ -403,6 +403,7 @@ export function registerIpc(win: BrowserWindow, services: Services): void {
   // ---------- Native Ranked ----------
   ipcMain.handle(IPC.ranked.status, () => ranked.status())
   ipcMain.handle(IPC.ranked.provision, () => ranked.provision())
+  ipcMain.handle(IPC.ranked.profile, (_e, playerId: string) => ranked.profile(playerId))
   ipcMain.handle(IPC.ranked.launch, async () => {
     const inst = await ranked.prepareLaunch()
     const game = await launcher.launch(inst, {

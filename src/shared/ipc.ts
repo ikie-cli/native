@@ -106,7 +106,8 @@ export const IPC = {
   ranked: {
     status: 'ranked:status',
     provision: 'ranked:provision',
-    launch: 'ranked:launch'
+    launch: 'ranked:launch',
+    profile: 'ranked:profile'
   },
   news: {
     fetch: 'news:fetch'
