@@ -339,8 +339,18 @@ export async function startE2EFixture(opts: { sleepClient?: boolean } = {}): Pro
     player: { id: 'ranked-test-player', username: 'TestPlayer', rating: 1000, wins: 0, losses: 0, races: 0 }
   })
   json(fx, '/ranked/v1/profile', {
-    player: { id: 'ranked-test-player', username: 'TestPlayer', rating: 1000, wins: 0, losses: 0, races: 0 },
-    history: []
+    player: { id: 'ranked-test-player', username: 'TestPlayer', rating: 1004, wins: 1, losses: 1, races: 2 },
+    history: [
+      { id: 'm1', mode: 'ranked', seed: '482016', createdAt: Date.now() - 3_600_000, finishedAt: Date.now() - 3_400_000, winnerId: 'ranked-test-player', finishMs: 512_000, ratingDelta: 18, opponent: 'Couriway' },
+      { id: 'm2', mode: 'ranked', seed: '119837', createdAt: Date.now() - 86_400_000, finishedAt: Date.now() - 86_100_000, winnerId: 'r1', finishMs: 604_000, ratingDelta: -14, opponent: 'Feinberg' }
+    ]
+  })
+  json(fx, '/ranked/v1/players/r1', {
+    player: { id: 'r1', username: 'Feinberg', rating: 1842, wins: 37, losses: 9, races: 46 },
+    history: [
+      { id: 'h1', mode: 'ranked', seed: '771', createdAt: Date.now() - 7_200_000, finishedAt: Date.now() - 7_000_000, winnerId: 'r1', finishMs: 486_000, ratingDelta: 12, opponent: 'Fruitberries' },
+      { id: 'h2', mode: 'ranked', seed: '552', createdAt: Date.now() - 90_000_000, finishedAt: Date.now() - 89_800_000, winnerId: 'r1', finishMs: 505_000, ratingDelta: 15, opponent: 'Ninjabrain' }
+    ]
   })
 
   const env: Record<string, string> = {

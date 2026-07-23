@@ -58,6 +58,12 @@ export function createRankedServer(options = {}) {
       if (req.method === 'GET' && url.pathname === '/v1/leaderboard') {
         return json(res, 200, { players: store.leaderboard(Number(url.searchParams.get('limit') ?? 50)) })
       }
+      const publicPlayerRoute = url.pathname.match(/^\/v1\/players\/([^/]+)$/)
+      if (req.method === 'GET' && publicPlayerRoute) {
+        const prof = store.publicProfile(publicPlayerRoute[1])
+        if (!prof) return json(res, 404, { error: 'Player not found' })
+        return json(res, 200, prof)
+      }
       if ((req.method === 'GET' || req.method === 'HEAD') && url.pathname.startsWith('/artifacts/') && artifacts) {
         const name = url.pathname.slice('/artifacts/'.length)
         if (!/^[a-zA-Z0-9._-]+$/.test(name)) return json(res, 400, { error: 'Invalid artifact name' })

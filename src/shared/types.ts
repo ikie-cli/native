@@ -184,6 +184,7 @@ export interface RankedStatus {
   instance: InstanceConfig | null
   player: RankedPlayer | null
   leaderboard: RankedPlayer[]
+  history: RankedMatchSummary[]
   service: {
     players: number
     queued: number
@@ -191,6 +192,25 @@ export interface RankedStatus {
     completedMatches: number
   } | null
   error?: string
+}
+
+/** One finished race in a player's history. */
+export interface RankedMatchSummary {
+  id: string
+  mode: string
+  seed: string
+  createdAt: number
+  finishedAt: number | null
+  winnerId: string | null
+  finishMs: number | null
+  ratingDelta: number
+  opponent: string
+}
+
+/** Public profile: a player plus their recent finished races. */
+export interface RankedProfile {
+  player: RankedPlayer
+  history: RankedMatchSummary[]
 }
 
 /** Full project page data for the mod detail view. */

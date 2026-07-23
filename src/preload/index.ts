@@ -21,6 +21,7 @@ import type {
   NewsItem,
   ProjectDetails,
   ProjectVersion,
+  RankedProfile,
   RankedStatus,
   RunningGame,
   ScreenshotInfo,
@@ -217,7 +218,8 @@ const api = {
   ranked: {
     status: (): Promise<RankedStatus> => ipcRenderer.invoke(IPC.ranked.status),
     provision: (): Promise<RankedStatus> => ipcRenderer.invoke(IPC.ranked.provision),
-    launch: (): Promise<RunningGame> => ipcRenderer.invoke(IPC.ranked.launch)
+    launch: (): Promise<RunningGame> => ipcRenderer.invoke(IPC.ranked.launch),
+    profile: (playerId: string): Promise<RankedProfile> => ipcRenderer.invoke(IPC.ranked.profile, playerId)
   },
   news: {
     fetch: (): Promise<NewsItem[]> => ipcRenderer.invoke(IPC.news.fetch)

@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { access, copyFile, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { AccountInfo, InstanceConfig, RankedPlayer, RankedStatus } from '@shared/types'
+import type { AccountInfo, InstanceConfig, RankedPlayer, RankedProfile, RankedStatus } from '@shared/types'
 import { paths, URLS } from '../paths'
 import type { AccountsService } from './accounts'
 import type { InstancesService } from './instances'
@@ -43,17 +43,18 @@ export class RankedService {
         instance,
         player: null,
         leaderboard,
+        history: [],
         service,
         error: message(error)
       }
     }
 
-    if (!instance) return { configured: false, online: true, instance: null, player: null, leaderboard, service }
+    if (!instance) return { configured: false, online: true, instance: null, player: null, leaderboard, history: [], service }
     const config = await this.readConfig(instance)
-    if (!config) return { configured: false, online: true, instance, player: null, leaderboard, service }
+    if (!config) return { configured: false, online: true, instance, player: null, leaderboard, history: [], service }
     try {
-      const profile = await getJson<{ player: RankedPlayer }>(`${URLS.ranked()}/v1/profile`, config.token)
-      return { configured: true, online: true, instance, player: profile.player, leaderboard, service }
+      const profile = await getJson<RankedProfile>(`${URLS.ranked()}/v1/profile`, config.token)
+      return { configured: true, online: true, instance, player: profile.player, leaderboard, history: profile.history ?? [], service }
     } catch (error) {
       return {
         configured: false,
@@ -61,10 +62,15 @@ export class RankedService {
         instance,
         player: null,
         leaderboard,
+        history: [],
         service,
         error: message(error)
       }
     }
+  }
+
+  async profile(playerId: string): Promise<RankedProfile> {
+    return getJson<RankedProfile>(`${URLS.ranked()}/v1/players/${encodeURIComponent(playerId)}`)
   }
 
   async provision(): Promise<RankedStatus> {
