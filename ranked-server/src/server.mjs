@@ -103,7 +103,7 @@ export function createRankedServer(options = {}) {
       }
       if (req.method === 'POST' && url.pathname === '/v1/queue') {
         const input = await body(req)
-        return json(res, 200, store.joinQueue(player.id, String(input.mode ?? 'ranked')))
+        return json(res, 200, store.joinQueue(player.id, String(input.mode ?? 'ranked'), input.mods))
       }
       if (req.method === 'GET' && url.pathname === '/v1/queue') {
         return json(res, 200, store.queueState(player.id))
@@ -116,7 +116,10 @@ export function createRankedServer(options = {}) {
       if (matchRoute) {
         const [, matchId, action] = matchRoute
         if (req.method === 'GET' && !action) return json(res, 200, { match: store.match(matchId, player.id) })
-        if (req.method === 'POST' && action === 'ready') return json(res, 200, { match: store.ready(matchId, player.id) })
+        if (req.method === 'POST' && action === 'ready') {
+          const input = await body(req)
+          return json(res, 200, { match: store.ready(matchId, player.id, input.seed) })
+        }
         if (req.method === 'POST' && action === 'progress') {
           const input = await body(req)
           return json(res, 200, { match: store.progress(matchId, player.id, String(input.progress ?? '')) })
@@ -129,7 +132,7 @@ export function createRankedServer(options = {}) {
       const message = error instanceof Error ? error.message : 'Request failed'
       const status = message.includes('not found') ? 404
         : message.includes('premium') ? 403
-        : message.includes('Invalid') || message.includes('must') || message.includes('large') ? 400
+        : message.includes('Invalid') || message.includes('must') || message.includes('large') || message.includes('mods') ? 400
         : 500
       return json(res, status, { error: message })
     }

@@ -130,14 +130,16 @@ public final class NativeRankedScreen extends Screen {
             statusColor = NativeTheme.RED;
         } else if (queued) {
             long seconds = Math.max(0, (System.currentTimeMillis() - controller.queuedAt()) / 1000);
-            status = "Searching for an opponent  \u00b7  " + clock(seconds);
+            status = "Searching for an opponent  \u00b7  " + clock(seconds)
+                + (controller.playersQueued() > 1 ? "  \u00b7  " + controller.playersQueued() + " in queue" : "");
         } else if (!controller.notice().isEmpty()) {
             status = trim(controller.notice(), buttonWidth() + 40);
             statusColor = NativeTheme.TEXT;
         } else if (!controller.verified()) {
             status = controller.username() + "  \u00b7  Casual only \u2014 sign in with a premium account for ranked";
         } else {
-            status = controller.username() + "  \u00b7  " + controller.rating() + " \u00b7 " + rankName(controller.rating());
+            status = controller.username() + "  \u00b7  " + controller.rating() + " \u00b7 " + rankName(controller.rating())
+                + (controller.playersOnline() > 0 ? "  \u00b7  " + controller.playersOnline() + " online" : "");
         }
         textRenderer.drawWithShadow(matrices, status, left, titleY + 15, statusColor);
     }

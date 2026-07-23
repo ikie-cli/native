@@ -61,14 +61,16 @@ test('matches two verified players on the same seed and applies Elo', async () =
   assert.equal(a.player.verified, true)
   const qa = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, a.token)
   assert.equal(qa.body.state, 'queued')
+  assert.equal(typeof qa.body.online, 'number')
+  assert.equal(typeof qa.body.queued, 'number')
   const qb = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, b.token)
   assert.equal(qb.body.state, 'matched')
   const match = qb.body.match
   assert.equal(match.players.length, 2)
   assert.match(match.seed, /^-?\d+$/)
 
-  await request(`/v1/matches/${match.id}/ready`, { method: 'POST' }, a.token)
-  const ready = await request(`/v1/matches/${match.id}/ready`, { method: 'POST' }, b.token)
+  await request(`/v1/matches/${match.id}/ready`, { method: 'POST', body: JSON.stringify({ seed: match.seed }) }, a.token)
+  const ready = await request(`/v1/matches/${match.id}/ready`, { method: 'POST', body: JSON.stringify({ seed: match.seed }) }, b.token)
   assert.equal(ready.body.match.status, 'running')
   assert.ok(ready.body.match.startsAt > Date.now())
 
@@ -80,6 +82,8 @@ test('matches two verified players on the same seed and applies Elo', async () =
   const done = await request(`/v1/matches/${match.id}/finish`, { method: 'POST' }, a.token)
   assert.equal(done.body.match.winnerId, a.player.id)
   assert.equal(done.body.match.status, 'finished')
+  const mine = done.body.match.players.find((p) => p.id === a.player.id)
+  assert.ok(mine.splits.end >= 110_000)
 
   const pa = await request('/v1/profile', {}, a.token)
   const pb = await request('/v1/profile', {}, b.token)
@@ -150,4 +154,53 @@ test('public player profile is served without auth', async () => {
   assert.equal(res.body.player.username, 'PublicOne')
   assert.ok(Array.isArray(res.body.history))
   assert.equal((await request('/v1/players/does-not-exist')).status, 404)
+})
+
+test('ranked rejects disallowed mods but allows the fabric/native allowlist', async () => {
+  const p = await verified('ModGuard')
+  const bad = await request('/v1/queue', {
+    method: 'POST',
+    body: JSON.stringify({ mode: 'ranked', mods: ['minecraft', 'fabricloader', 'fabric-api', 'native-ranked', 'xaeros-minimap'] })
+  }, p.token)
+  assert.equal(bad.status, 400)
+  assert.match(bad.body.error, /xaeros-minimap/)
+  const ok = await request('/v1/queue', {
+    method: 'POST',
+    body: JSON.stringify({ mode: 'ranked', mods: ['minecraft', 'java', 'fabricloader', 'fabric-api', 'fabric-networking-api-v1', 'native-ranked'] })
+  }, p.token)
+  assert.equal(ok.status, 200)
+  assert.equal(ok.body.state, 'queued')
+  await request('/v1/queue', { method: 'DELETE' }, p.token)
+})
+
+test('voids a match when a player reports the wrong world seed', async () => {
+  const a = await verified('SeedA')
+  const b = await verified('SeedB')
+  await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, a.token)
+  const qb = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, b.token)
+  const match = qb.body.match
+  const wrong = await request(`/v1/matches/${match.id}/ready`, {
+    method: 'POST', body: JSON.stringify({ seed: `${match.seed}1` })
+  }, a.token)
+  assert.equal(wrong.body.match.status, 'void')
+})
+
+test('rejects an implausibly fast split (anti-cheat)', async () => {
+  const a = await verified('SplitA')
+  const b = await verified('SplitB')
+  await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, a.token)
+  const qb = await request('/v1/queue', { method: 'POST', body: JSON.stringify({ mode: 'ranked' }) }, b.token)
+  const match = qb.body.match
+  await request(`/v1/matches/${match.id}/ready`, { method: 'POST' }, a.token)
+  await request(`/v1/matches/${match.id}/ready`, { method: 'POST' }, b.token)
+
+  // Record an impossible 5s nether split.
+  app.store.db.prepare('UPDATE matches SET starts_at = ? WHERE id = ?').run(Date.now() - 5000, match.id)
+  await request(`/v1/matches/${match.id}/progress`, { method: 'POST', body: JSON.stringify({ progress: 'nether' }) }, a.token)
+  // Advance past the finish floor, reach the end, then a finish is rejected on the bad split.
+  app.store.db.prepare('UPDATE matches SET starts_at = ? WHERE id = ?').run(Date.now() - 130_000, match.id)
+  await request(`/v1/matches/${match.id}/progress`, { method: 'POST', body: JSON.stringify({ progress: 'end' }) }, a.token)
+  const res = await request(`/v1/matches/${match.id}/finish`, { method: 'POST' }, a.token)
+  assert.equal(res.status, 400)
+  assert.match(res.body.error, /nether/)
 })

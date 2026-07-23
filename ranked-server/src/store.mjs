@@ -20,6 +20,25 @@ function publicPlayer(row) {
   }
 }
 
+const SPLIT_FLOORS = { nether: 20_000, bastion: 45_000, fortress: 45_000, stronghold: 90_000, end: 110_000 }
+const MOD_ALLOWLIST = new Set(['minecraft', 'java', 'fabricloader', 'fabric', 'fabric-api', 'native-ranked', 'mixinextras'])
+
+function safeSplits(value) {
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function disallowedMods(mods) {
+  if (!Array.isArray(mods)) return []
+  return mods
+    .map((m) => String(m).toLowerCase())
+    .filter((id) => !(MOD_ALLOWLIST.has(id) || id.startsWith('fabric-') || id.startsWith('fabricloader')))
+}
+
 export class RankedStore {
   constructor(file = ':memory:') {
     this.db = new DatabaseSync(file)
@@ -60,6 +79,7 @@ export class RankedStore {
         finish_ms INTEGER,
         rating_before INTEGER NOT NULL,
         rating_delta INTEGER NOT NULL DEFAULT 0,
+        splits TEXT NOT NULL DEFAULT '{}',
         PRIMARY KEY (match_id, player_id)
       );
       CREATE INDEX IF NOT EXISTS idx_matches_created ON matches(created_at DESC);
@@ -69,6 +89,10 @@ export class RankedStore {
     const cols = this.db.prepare('PRAGMA table_info(players)').all().map((c) => c.name)
     if (!cols.includes('verified')) {
       this.db.exec('ALTER TABLE players ADD COLUMN verified INTEGER NOT NULL DEFAULT 0')
+    }
+    const mpCols = this.db.prepare('PRAGMA table_info(match_players)').all().map((c) => c.name)
+    if (!mpCols.includes('splits')) {
+      this.db.exec("ALTER TABLE match_players ADD COLUMN splits TEXT NOT NULL DEFAULT '{}'")
     }
   }
 
@@ -143,27 +167,48 @@ export class RankedStore {
     return row ? publicPlayer(row) : null
   }
 
-  joinQueue(playerId, mode) {
+  joinQueue(playerId, mode, mods) {
     if (!['ranked', 'casual'].includes(mode)) throw new Error('Invalid queue mode')
     if (mode === 'ranked') {
       const row = this.db.prepare('SELECT verified FROM players WHERE id = ?').get(playerId)
       if (!row || !row.verified) throw new Error('Ranked is for verified premium accounts only')
+      const bad = disallowedMods(mods)
+      if (bad.length) throw new Error(`Ranked disallows these mods: ${bad.slice(0, 6).join(', ')}`)
     }
     this.expire()
     const active = this.activeMatch(playerId)
-    if (active) return { state: 'matched', match: active }
+    if (active) return { state: 'matched', match: active, ...this.counts() }
     const now = Date.now()
     this.db.prepare(`
       INSERT INTO queue (player_id, mode, joined_at) VALUES (?, ?, ?)
       ON CONFLICT(player_id) DO UPDATE SET mode = excluded.mode, joined_at = excluded.joined_at
     `).run(playerId, mode, now)
-    const opponent = this.db.prepare(`
-      SELECT q.player_id FROM queue q
+    const me = this.db.prepare('SELECT rating FROM players WHERE id = ?').get(playerId)
+    const myRating = me ? me.rating : 1000
+    // Elo-based matchmaking: pick the closest-rated opponent whose search
+    // window (which widens the longer they have waited) admits our gap.
+    const candidates = this.db.prepare(`
+      SELECT q.player_id, q.joined_at, p.rating FROM queue q
+      JOIN players p ON p.id = q.player_id
       WHERE q.mode = ? AND q.player_id != ?
-      ORDER BY q.joined_at ASC LIMIT 1
-    `).get(mode, playerId)
-    if (!opponent) return { state: 'queued', joinedAt: now }
-    return { state: 'matched', match: this.createMatch(opponent.player_id, playerId, mode) }
+    `).all(mode, playerId)
+    let best = null
+    for (const c of candidates) {
+      const waitSeconds = Math.max(0, (now - c.joined_at) / 1000)
+      const window = 80 + 30 * waitSeconds
+      const gap = Math.abs(myRating - c.rating)
+      if (gap <= window && (!best || gap < best.gap)) best = { id: c.player_id, gap }
+    }
+    if (!best) return { state: 'queued', joinedAt: now, ...this.counts() }
+    return { state: 'matched', match: this.createMatch(best.id, playerId, mode), ...this.counts() }
+  }
+
+  counts() {
+    const now = Date.now()
+    return {
+      online: this.db.prepare('SELECT count(*) AS n FROM players WHERE last_seen_at > ?').get(now - 600_000).n,
+      queued: this.db.prepare('SELECT count(*) AS n FROM queue').get().n
+    }
   }
 
   leaveQueue(playerId) {
@@ -193,9 +238,9 @@ export class RankedStore {
   queueState(playerId) {
     this.expire()
     const match = this.activeMatch(playerId)
-    if (match) return { state: 'matched', match }
+    if (match) return { state: 'matched', match, ...this.counts() }
     const row = this.db.prepare('SELECT joined_at FROM queue WHERE player_id = ?').get(playerId)
-    return row ? { state: 'queued', joinedAt: row.joined_at } : { state: 'idle' }
+    return row ? { state: 'queued', joinedAt: row.joined_at, ...this.counts() } : { state: 'idle', ...this.counts() }
   }
 
   activeMatch(playerId) {
@@ -233,13 +278,20 @@ export class RankedStore {
         progress: r.progress,
         ready: r.ready_at !== null,
         finishMs: r.finish_ms,
-        ratingDelta: r.rating_delta
+        ratingDelta: r.rating_delta,
+        splits: safeSplits(r.splits)
       }))
     }
   }
 
-  ready(matchId, playerId) {
+  ready(matchId, playerId, reportedSeed) {
     this.assertParticipant(matchId, playerId)
+    const info = this.db.prepare('SELECT seed, status FROM matches WHERE id = ?').get(matchId)
+    if (info && info.status === 'preparing' && reportedSeed != null && String(reportedSeed) !== info.seed) {
+      // The player did not generate the assigned world — void the match (no Elo change).
+      this.db.prepare(`UPDATE matches SET status = 'void', finished_at = ? WHERE id = ?`).run(Date.now(), matchId)
+      return this.match(matchId, playerId)
+    }
     this.db.prepare(`UPDATE match_players SET ready_at = COALESCE(ready_at, ?) WHERE match_id = ? AND player_id = ?`)
       .run(Date.now(), matchId, playerId)
     const pending = this.db.prepare('SELECT count(*) AS n FROM match_players WHERE match_id = ? AND ready_at IS NULL').get(matchId).n
@@ -255,8 +307,14 @@ export class RankedStore {
     if (!PROGRESS.includes(progress) || progress === 'finished') throw new Error('Invalid progress')
     const row = this.assertParticipant(matchId, playerId)
     if (PROGRESS.indexOf(progress) < PROGRESS.indexOf(row.progress)) return this.match(matchId, playerId)
-    this.db.prepare('UPDATE match_players SET progress = ? WHERE match_id = ? AND player_id = ?')
-      .run(progress, matchId, playerId)
+    const match = this.db.prepare('SELECT starts_at, status FROM matches WHERE id = ?').get(matchId)
+    const splits = safeSplits(row.splits)
+    if (match && match.status === 'running' && match.starts_at && splits[progress] == null) {
+      const elapsed = Date.now() - match.starts_at
+      if (elapsed > 0) splits[progress] = elapsed
+    }
+    this.db.prepare('UPDATE match_players SET progress = ?, splits = ? WHERE match_id = ? AND player_id = ?')
+      .run(progress, JSON.stringify(splits), matchId, playerId)
     return this.match(matchId, playerId)
   }
 
@@ -271,6 +329,12 @@ export class RankedStore {
     if (elapsed < 120_000) throw new Error('Invalid finish: implausibly fast')
     if (PROGRESS.indexOf(self.progress) < PROGRESS.indexOf('stronghold')) {
       throw new Error('Invalid finish: stronghold not reached')
+    }
+    const splits = safeSplits(self.splits)
+    for (const [milestone, floor] of Object.entries(SPLIT_FLOORS)) {
+      if (splits[milestone] != null && splits[milestone] < floor) {
+        throw new Error(`Invalid finish: implausible ${milestone} split`)
+      }
     }
     this.db.prepare(`UPDATE match_players SET progress = 'finished', finish_ms = ? WHERE match_id = ? AND player_id = ?`)
       .run(elapsed, matchId, playerId)
