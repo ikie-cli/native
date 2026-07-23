@@ -8,8 +8,7 @@ import {
   Play,
   Plus,
   Server,
-  Square,
-  Swords
+  Square
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { InstanceConfig, SearchHit, ServerEntry } from '@shared/types'
@@ -360,11 +359,17 @@ function RecentServers({ servers }: { servers: ServerEntry[] }): React.JSX.Eleme
   )
 }
 
-function NativeRankedCard(): React.JSX.Element {
+const RANKED_INSTANCE_MARKER = 'native-ranked:managed:v1'
+
+function NativeRankedCard(): React.JSX.Element | null {
   const push = useToasts((s) => s.push)
   const { go } = useNav()
+  const instances = useInstances((s) => s.instances)
   const refresh = useInstances((s) => s.refresh)
   const [installing, setInstalling] = useState(false)
+
+  // Once the managed Native Ranked instance exists, the ad has done its job — hide it.
+  if (instances.some((i) => i.notes?.includes(RANKED_INSTANCE_MARKER))) return null
 
   const install = (): void => {
     setInstalling(true)
@@ -375,7 +380,7 @@ function NativeRankedCard(): React.JSX.Element {
         push({
           kind: 'success',
           title: 'Native Ranked installed',
-          detail: `Launch “${res.name}” and sign in to play — premium accounts unlock ranked, offline accounts can practice casually.`
+          detail: `Launch “${res.name}” and sign in to play — premium accounts unlock ranked, offline accounts practice casually.`
         })
         go({ name: 'instance', id: res.instanceId, tab: 'content' })
       })
@@ -385,22 +390,17 @@ function NativeRankedCard(): React.JSX.Element {
 
   return (
     <section className="mt-8" data-testid="native-ranked">
-      <div className="mb-1 text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">Compete</div>
-      <div className="flex items-center gap-4 rounded-card border border-line-subtle bg-surface-raised p-5">
-        <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md2 text-white"
-          style={{ background: 'linear-gradient(135deg, #ff496e, #8f1d3a)' }}
-        >
-          <Swords size={26} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-h3 font-bold text-content-primary">Native Ranked</div>
-          <div className="mt-0.5 text-small text-content-secondary">
-            1v1 same-seed speedrun races — Elo ratings, a live leaderboard, and profiles, all in a
-            standalone 1.16.1 Fabric mod. Premium accounts play ranked; offline accounts practice casually.
+      <div className="flex items-center justify-between gap-4 overflow-hidden rounded-card border border-line-subtle bg-surface-raised px-5 py-4">
+        <div className="min-w-0">
+          <div className="text-tiny font-bold uppercase tracking-[0.16em] text-content-muted">Compete</div>
+          <div className="mt-1 truncate text-body font-bold text-content-primary">
+            Native Ranked — 1v1 same-seed speedrun races
+          </div>
+          <div className="mt-0.5 truncate text-small text-content-secondary">
+            Elo matchmaking with seasons, live splits, and a global leaderboard — a standalone 1.16.1 Fabric mod.
           </div>
         </div>
-        <Button icon={Swords} onClick={install} disabled={installing} data-testid="ranked-install">
+        <Button onClick={install} disabled={installing} data-testid="ranked-install" className="shrink-0">
           {installing ? 'Installing…' : 'Install'}
         </Button>
       </div>
