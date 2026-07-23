@@ -18,6 +18,8 @@ extraResources:
     to: icon.ico
   - from: resources/native-ranked.jar
     to: native-ranked.jar
+  - from: resources/native-ranked-icon.png
+    to: native-ranked-icon.png
 asarUnpack:
   - '**/*.node'
 npmRebuild: true

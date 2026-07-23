@@ -6,6 +6,7 @@ import type { InstancesService } from './instances'
 
 const INSTANCE_MARKER = 'native-ranked:managed:v1'
 const MOD_FILE = 'native-ranked.jar'
+const ICON_FILE = 'native-ranked-icon.png'
 
 /**
  * Native Ranked is now a fully standalone Fabric mod (like MCSR Ranked): it
@@ -28,24 +29,23 @@ export class RankedService {
   }
 
   private async ensureInstance(): Promise<InstanceConfig> {
+    const icon = await this.ensureIcon()
     const existing = this.findInstance()
     if (existing) {
-      if (existing.mcVersion !== '1.16.1' || existing.loader !== 'fabric') {
-        return this.instances.update(existing.id, {
-          mcVersion: '1.16.1',
-          loader: 'fabric',
-          loaderVersion: '0.16.10',
-          notes: INSTANCE_MARKER
-        })
-      }
-      return existing
+      return this.instances.update(existing.id, {
+        mcVersion: '1.16.1',
+        loader: 'fabric',
+        loaderVersion: '0.16.10',
+        icon,
+        notes: INSTANCE_MARKER
+      })
     }
     return this.instances.create({
       name: 'Native Ranked',
       mcVersion: '1.16.1',
       loader: 'fabric',
       loaderVersion: '0.16.10',
-      icon: 'builtin:sword',
+      icon,
       memMin: 512,
       memMax: 2048,
       gameWidth: 1067,
@@ -53,6 +53,25 @@ export class RankedService {
       group: 'Native',
       notes: INSTANCE_MARKER
     })
+  }
+
+  /** Copy the bundled Native Ranked icon into the icons dir; return its ref (builtin fallback). */
+  private async ensureIcon(): Promise<string> {
+    const candidates = [
+      join(process.resourcesPath, ICON_FILE),
+      join(process.cwd(), 'resources', ICON_FILE)
+    ]
+    for (const candidate of candidates) {
+      try {
+        await access(candidate)
+        await mkdir(paths.icons(), { recursive: true })
+        await copyFile(candidate, join(paths.icons(), ICON_FILE))
+        return `image:${ICON_FILE}`
+      } catch {
+        // Try the next location, else fall back to a builtin glyph.
+      }
+    }
+    return 'builtin:sword'
   }
 
   private async installMod(instance: InstanceConfig): Promise<void> {
