@@ -1,12 +1,12 @@
-version: 3.4.6
+version: 3.5.0
 files:
-  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.4.6/Native-3.4.6-arm64.AppImage
-    sha512: HFg0TWyA62vcLuyl+3Iroln+98LGyrU1v1qVJ0MQQ2LQednGS5MRVdOjbnRRqJK4jjLbFfCZyyXo5aNUV2Mpcg==
-    size: 117461765
-    blockMapSize: 122449
-  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.4.6/Native-3.4.6-arm64.deb
-    sha512: QuILVDAqNI4u9HRG0S2BVgVGIkePqr45gJ5y1ZH9CeCJ138Ee1ZlSscbtTQ/EAVPh8OPt7GGBlJQ7odoM4JSbw==
-    size: 85242852
-path: Native-3.4.6-arm64.AppImage
-sha512: HFg0TWyA62vcLuyl+3Iroln+98LGyrU1v1qVJ0MQQ2LQednGS5MRVdOjbnRRqJK4jjLbFfCZyyXo5aNUV2Mpcg==
-releaseDate: '2026-07-23T02:41:49.634Z'
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.5.0/Native-3.5.0-arm64.AppImage
+    sha512: zOww8HtZID5I5DhaBKTCR7hl0GOEKa3Z8jHfW9Sv/DF8wLHhZTEGOjblRvPrtyPP6v8ARB90pXUHc8ML6raLrA==
+    size: 117301969
+    blockMapSize: 122397
+  - url: https://github.com/ikie-cli/native-releases/releases/download/v3.5.0/Native-3.5.0-arm64.deb
+    sha512: W/HqkcotliwZeDJqtG4yhLzgU92xa7zBFM3eWqzTKPTjGY4iONc6zPPR+HoOxCezMJzx4Yf2feMbxOdGyj1qOw==
+    size: 85141884
+path: Native-3.5.0-arm64.AppImage
+sha512: zOww8HtZID5I5DhaBKTCR7hl0GOEKa3Z8jHfW9Sv/DF8wLHhZTEGOjblRvPrtyPP6v8ARB90pXUHc8ML6raLrA==
+releaseDate: '2026-07-23T04:02:28.596Z'
