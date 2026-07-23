@@ -44,4 +44,6 @@ test('one-click installs the standalone Native Ranked mod into a managed instanc
   // The standalone mod jar is present; the mod self-authenticates in-game
   // (no launcher-written token/config file anymore).
   await access(join(dataDir, 'instances', rankedId!, 'minecraft', 'mods', 'native-ranked.jar'))
+  // The custom Native Ranked instance icon is installed.
+  await access(join(dataDir, 'icons', 'native-ranked-icon.png'))
 })
