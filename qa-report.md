@@ -1,6 +1,6 @@
 # Visual QA report
 
-Generated 2026-07-22 · threshold **85%** (empty/error states: 75% — sparse by design) · method: perceptual similarity (45% quantized-palette Bhattacharyya affinity, 35% 32×18 luminance-grid layout, 20% tonal-distribution Bhattacharyya affinity) against the reference screenshots in `./screenshots/`.
+Generated 2026-07-23 · threshold **85%** (empty/error states: 75% — sparse by design) · method: perceptual similarity (45% quantized-palette Bhattacharyya affinity, 35% 32×18 luminance-grid layout, 20% tonal-distribution Bhattacharyya affinity) against the reference screenshots in `./screenshots/`.
 
 | Screen | Reference | Palette | Layout | Tone | **Score** | Verdict | Notes |
 |---|---|---|---|---|---|---|---|
@@ -18,7 +18,7 @@ Generated 2026-07-22 · threshold **85%** (empty/error states: 75% — sparse by
 | launch-console | ref-113614.png | 87.1% | 95.2% | 96.7% | **91.8%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | library-empty | ref-113521.png | 85.9% | 94.4% | 92.4% | **90.2%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | library | ref-113521.png | 85.0% | 92.5% | 93.6% | **89.4%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
-| ranked | ref-113614.png | 84.2% | 93.2% | 96.5% | **89.8%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
+| ranked | ref-113614.png | 84.1% | 93.1% | 96.5% | **89.7%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | servers-empty | ref-113521.png | 84.6% | 94.2% | 90.8% | **89.2%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | servers | ref-113521.png | 81.1% | 93.0% | 93.2% | **87.7%** | ✅ pass | palette matches, layout aligned, tonal balance matches |
 | settings | ref-113645.png | 89.3% | 91.3% | 94.2% | **91.0%** | ✅ pass | palette matches, layout aligned, tonal balance matches |

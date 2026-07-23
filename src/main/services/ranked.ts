@@ -93,8 +93,9 @@ export class RankedService {
       instance = state.instance
     } else {
       const modVersion = await this.installMod(instance)
-      if (config.modVersion !== modVersion) {
-        config = { ...config, modVersion }
+      // Migrate the stored endpoint (e.g. legacy http → the current HTTPS API) and mod version.
+      if (config.modVersion !== modVersion || config.endpoint !== URLS.ranked()) {
+        config = { ...config, modVersion, endpoint: URLS.ranked() }
         await this.writeRawConfig(instance, config)
       }
     }
@@ -153,7 +154,7 @@ export class RankedService {
     const localCandidates = [
       join(process.resourcesPath, MOD_FILE),
       join(process.cwd(), 'resources', MOD_FILE),
-      join(process.cwd(), 'native-ranked-mod', 'build', 'libs', 'native-ranked-0.3.0.jar')
+      join(process.cwd(), 'native-ranked-mod', 'build', 'libs', 'native-ranked-0.3.1.jar')
     ]
     let bytes: Buffer | null = null
     try {
